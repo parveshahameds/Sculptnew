@@ -1,0 +1,7 @@
+{
+  "name": "Copy of Sculpt",
+  "description": "Generate stunning images of custom jewelry based on your descriptions. Specify the type, materials, and gemstones, and even upload a custom engraving to be featured on your unique piece.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
