@@ -2,7 +2,7 @@ import type { JewelrySpec } from '../components/ManufacturingDetails';
 
 const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
 const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
-const GEMINI_MODEL = 'google/gemini-2.5-flash-image'; // Supports image generation and vision
+const GEMINI_MODEL = 'google/gemini-2.5-flash-image-preview'; // Supports image generation and vision
 
 interface OpenRouterMessage {
     role: 'user' | 'assistant' | 'system';
@@ -34,15 +34,15 @@ export const generateJewelryImage = async (
     try {
         const requestBody = {
             model: GEMINI_MODEL,
+            modalities: ["text", "image"], // Enable image generation
             messages: [
                 {
                     role: 'user',
                     content: content
                 }
-            ],
-            response_modalities: ['image'] // Enable image generation
+            ]
         };
-        
+
         console.log('Generating jewelry image with:', GEMINI_MODEL);
 
         const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
@@ -64,12 +64,12 @@ export const generateJewelryImage = async (
 
         const data = await response.json();
         console.log('OpenRouter image generation response:', data);
-        
-        const messageContent = data.choices?.[0]?.message?.content;
-        
-        // Handle array response (image + optional text)
-        if (Array.isArray(messageContent)) {
-            for (const item of messageContent) {
+
+        const message = data.choices?.[0]?.message;
+
+        // First, check for images in the separate 'images' field (OpenRouter format)
+        if (message?.images && Array.isArray(message.images)) {
+            for (const item of message.images) {
                 if (item.type === 'image_url' && item.image_url?.url) {
                     // Remove data URL prefix if present
                     const base64 = item.image_url.url.replace(/^data:image\/\w+;base64,/, '');
@@ -77,14 +77,19 @@ export const generateJewelryImage = async (
                 }
             }
         }
-        
-        // Handle string response (shouldn't happen with image generation)
-        if (typeof messageContent === 'string') {
-            console.warn('Received text instead of image:', messageContent);
-            throw new Error("Model returned text instead of an image. Please try again.");
+
+        // Fallback: Check if content is an array with images (alternative format)
+        const messageContent = message?.content;
+        if (Array.isArray(messageContent)) {
+            for (const item of messageContent) {
+                if (item.type === 'image_url' && item.image_url?.url) {
+                    const base64 = item.image_url.url.replace(/^data:image\/\w+;base64,/, '');
+                    return base64;
+                }
+            }
         }
-        
-        throw new Error("No image found in the API response.");
+
+        throw new Error("No image found in the API response. Please try again.");
 
     } catch (error) {
         console.error("OpenRouter API call failed:", error);
@@ -246,15 +251,15 @@ Requirements:
     try {
         const requestBody = {
             model: GEMINI_MODEL,
+            modalities: ["text", "image"], // Enable image generation
             messages: [
                 {
                     role: 'user',
                     content: content
                 }
-            ],
-            response_modalities: ['image'] // Enable image generation
+            ]
         };
-        
+
         console.log('Generating virtual try-on with:', GEMINI_MODEL);
 
         const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
@@ -276,10 +281,21 @@ Requirements:
 
         const data = await response.json();
         console.log('OpenRouter try-on response:', data);
-        
-        const messageContent = data.choices?.[0]?.message?.content;
-        
-        // Handle array response (image + optional text)
+
+        const message = data.choices?.[0]?.message;
+
+        // First, check for images in the separate 'images' field (OpenRouter format)
+        if (message?.images && Array.isArray(message.images)) {
+            for (const item of message.images) {
+                if (item.type === 'image_url' && item.image_url?.url) {
+                    const base64 = item.image_url.url.replace(/^data:image\/\w+;base64,/, '');
+                    return base64;
+                }
+            }
+        }
+
+        // Fallback: Check if content is an array with images (alternative format)
+        const messageContent = message?.content;
         if (Array.isArray(messageContent)) {
             for (const item of messageContent) {
                 if (item.type === 'image_url' && item.image_url?.url) {
@@ -288,7 +304,7 @@ Requirements:
                 }
             }
         }
-        
+
         throw new Error("No image found in the API response.");
         
     } catch (error) {
