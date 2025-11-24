@@ -1,17 +1,29 @@
 import type { JewelrySpec } from '../components/ManufacturingDetails';
+import { saveJewelryDesign, saveTryOnResult } from './supabaseService';
 
 const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
 const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
 const GEMINI_MODEL = 'google/gemini-2.5-flash-image-preview'; // Supports image generation and vision
 
-interface OpenRouterMessage {
-    role: 'user' | 'assistant' | 'system';
-    content: string | Array<{ type: 'text' | 'image_url'; text?: string; image_url?: { url: string } }>;
-}
+// Store for temporary data between generate and analyze calls
+let pendingDesignData: {
+    prompt: string;
+    jewelryType?: string;
+    material?: string;
+    gemstone?: string;
+    engravingStyle?: string;
+    imageBase64: string;
+} | null = null;
 
 export const generateJewelryImage = async (
-    prompt: string, 
-    imageInputs: { base64: string, mimeType: string }[]
+    prompt: string,
+    imageInputs: { base64: string, mimeType: string }[],
+    metadata?: {
+        jewelryType?: string;
+        material?: string;
+        gemstone?: string;
+        engravingStyle?: string;
+    }
 ): Promise<string> => {
     const content: Array<{ type: 'text' | 'image_url'; text?: string; image_url?: { url: string } }> = [];
     
@@ -73,6 +85,14 @@ export const generateJewelryImage = async (
                 if (item.type === 'image_url' && item.image_url?.url) {
                     // Remove data URL prefix if present
                     const base64 = item.image_url.url.replace(/^data:image\/\w+;base64,/, '');
+
+                    // Store pending design data for when analyze is called
+                    pendingDesignData = {
+                        prompt,
+                        imageBase64: base64,
+                        ...metadata
+                    };
+
                     return base64;
                 }
             }
@@ -84,6 +104,14 @@ export const generateJewelryImage = async (
             for (const item of messageContent) {
                 if (item.type === 'image_url' && item.image_url?.url) {
                     const base64 = item.image_url.url.replace(/^data:image\/\w+;base64,/, '');
+
+                    // Store pending design data for when analyze is called
+                    pendingDesignData = {
+                        prompt,
+                        imageBase64: base64,
+                        ...metadata
+                    };
+
                     return base64;
                 }
             }
@@ -202,9 +230,34 @@ Generate plausible specifications based on the visual information. Estimate dime
         } else if (cleanJson.startsWith('```')) {
             cleanJson = cleanJson.replace(/```\n?/g, '');
         }
-        
+
         const parsedJson = JSON.parse(cleanJson.trim());
-        return parsedJson as JewelrySpec;
+        const specs = parsedJson as JewelrySpec;
+
+        // Auto-save to Supabase if we have pending design data
+        if (pendingDesignData) {
+            try {
+                console.log('Auto-saving jewelry design to Supabase...');
+                const savedDesign = await saveJewelryDesign({
+                    prompt: pendingDesignData.prompt,
+                    jewelryType: pendingDesignData.jewelryType,
+                    material: pendingDesignData.material,
+                    gemstone: pendingDesignData.gemstone,
+                    engravingStyle: pendingDesignData.engravingStyle,
+                    imageBase64: pendingDesignData.imageBase64,
+                    designSpecs: specs
+                });
+                console.log('Design saved to Supabase:', savedDesign);
+
+                // Clear pending data after successful save
+                pendingDesignData = null;
+            } catch (saveError) {
+                console.error('Failed to auto-save design to Supabase:', saveError);
+                // Don't throw - allow the analysis to succeed even if save fails
+            }
+        }
+
+        return specs;
 
     } catch (error) {
         console.error("OpenRouter analysis call failed:", error);
@@ -219,7 +272,8 @@ export const generateTryOnImage = async (
     personImageBase64: string,
     personImageMimeType: string,
     jewelryImageBase64: string,
-    jewelryType: string
+    jewelryType: string,
+    designId?: string
 ): Promise<string> => {
     const prompt = `Generate a photorealistic image of the person from the first image wearing the jewelry from the second image (${jewelryType}).
     
@@ -289,6 +343,22 @@ Requirements:
             for (const item of message.images) {
                 if (item.type === 'image_url' && item.image_url?.url) {
                     const base64 = item.image_url.url.replace(/^data:image\/\w+;base64,/, '');
+
+                    // Auto-save try-on result to Supabase
+                    try {
+                        console.log('Auto-saving try-on result to Supabase...');
+                        const savedResult = await saveTryOnResult({
+                            designId,
+                            personImageBase64,
+                            resultImageBase64: base64,
+                            jewelryType
+                        });
+                        console.log('Try-on result saved to Supabase:', savedResult);
+                    } catch (saveError) {
+                        console.error('Failed to auto-save try-on result to Supabase:', saveError);
+                        // Don't throw - allow the try-on to succeed even if save fails
+                    }
+
                     return base64;
                 }
             }
@@ -300,13 +370,29 @@ Requirements:
             for (const item of messageContent) {
                 if (item.type === 'image_url' && item.image_url?.url) {
                     const base64 = item.image_url.url.replace(/^data:image\/\w+;base64,/, '');
+
+                    // Auto-save try-on result to Supabase
+                    try {
+                        console.log('Auto-saving try-on result to Supabase...');
+                        const savedResult = await saveTryOnResult({
+                            designId,
+                            personImageBase64,
+                            resultImageBase64: base64,
+                            jewelryType
+                        });
+                        console.log('Try-on result saved to Supabase:', savedResult);
+                    } catch (saveError) {
+                        console.error('Failed to auto-save try-on result to Supabase:', saveError);
+                        // Don't throw - allow the try-on to succeed even if save fails
+                    }
+
                     return base64;
                 }
             }
         }
 
         throw new Error("No image found in the API response.");
-        
+
     } catch (error) {
         console.error("OpenRouter Try-On API call failed:", error);
         if (error instanceof Error) {

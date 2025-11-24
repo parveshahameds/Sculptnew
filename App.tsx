@@ -62,7 +62,12 @@ const App: React.FC = () => {
              imageInputs.push({ base64, mimeType: engravingFile.type });
         }
 
-        const imageBase64 = await generateJewelryImage(prompt, imageInputs);
+        const imageBase64 = await generateJewelryImage(prompt, imageInputs, {
+            jewelryType,
+            material,
+            gemstone,
+            engravingStyle: engravingFile ? engravingStyle : undefined
+        });
         setGeneratedImage(imageBase64);
 
         const analysis = await analyzeJewelryImage(imageBase64);
