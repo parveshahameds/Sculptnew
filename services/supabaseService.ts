@@ -76,16 +76,24 @@ export const saveJewelryDesign = async (designData: {
     designSpecs: JewelrySpec;
 }): Promise<{ id: string; imageUrl: string }> => {
     try {
+        // Get current authenticated user
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+        if (userError || !user) {
+            throw new Error('User must be authenticated to save designs');
+        }
+
         // Upload image to storage
         const imageUrl = await uploadImageToStorage(
             designData.imageBase64,
             'jewelry-designs'
         );
 
-        // Save design to database
+        // Save design to database with user_id
         const { data, error } = await supabase
             .from('jewelry_designs')
             .insert({
+                user_id: user.id,
                 prompt: designData.prompt,
                 jewelry_type: designData.jewelryType || null,
                 material: designData.material || null,
@@ -126,16 +134,24 @@ export const saveTryOnResult = async (tryOnData: {
     jewelryType: string;
 }): Promise<{ id: string; resultImageUrl: string }> => {
     try {
+        // Get current authenticated user
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+        if (userError || !user) {
+            throw new Error('User must be authenticated to save try-on results');
+        }
+
         // Upload both images to storage
         const [personImageUrl, resultImageUrl] = await Promise.all([
             uploadImageToStorage(tryOnData.personImageBase64, 'try-on-results'),
             uploadImageToStorage(tryOnData.resultImageBase64, 'try-on-results')
         ]);
 
-        // Save try-on result to database
+        // Save try-on result to database with user_id
         const { data, error } = await supabase
             .from('try_on_results')
             .insert({
+                user_id: user.id,
                 design_id: tryOnData.designId || null,
                 person_image_url: personImageUrl,
                 jewelry_type: tryOnData.jewelryType,
@@ -162,12 +178,72 @@ export const saveTryOnResult = async (tryOnData: {
 };
 
 /**
- * Retrieves all jewelry designs from the database
+ * Updates an existing jewelry design with new image and specs (for refinements)
+ * @param designId - The ID of the design to update
+ * @param updateData - The updated image and specs
+ * @returns The updated design with new image URL
+ */
+export const updateJewelryDesign = async (
+    designId: string,
+    updateData: {
+        imageBase64: string;
+        designSpecs: JewelrySpec;
+        refinementPrompt?: string;
+    }
+): Promise<{ id: string; imageUrl: string }> => {
+    try {
+        // Get current authenticated user
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+        if (userError || !user) {
+            throw new Error('User must be authenticated to update designs');
+        }
+
+        // Upload new refined image to storage
+        const imageUrl = await uploadImageToStorage(
+            updateData.imageBase64,
+            'jewelry-designs'
+        );
+
+        // Update design in database
+        const { data, error } = await supabase
+            .from('jewelry_designs')
+            .update({
+                image_url: imageUrl,
+                design_specs: updateData.designSpecs,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', designId)
+            .eq('user_id', user.id) // Ensure user owns this design
+            .select('id, image_url')
+            .single();
+
+        if (error) {
+            console.error('Supabase update error:', error);
+            throw new Error(`Failed to update design: ${error.message}`);
+        }
+
+        console.log('Design updated successfully:', data);
+        return { id: data.id, imageUrl: data.image_url };
+
+    } catch (error) {
+        console.error('Error updating jewelry design:', error);
+        if (error instanceof Error) {
+            throw new Error(`Failed to update design: ${error.message}`);
+        }
+        throw new Error('Failed to update design due to an unknown error');
+    }
+};
+
+/**
+ * Retrieves jewelry designs for the authenticated user
  * @param limit - Maximum number of designs to retrieve
  * @returns Array of jewelry designs
  */
 export const getJewelryDesigns = async (limit = 50) => {
     try {
+        // RLS policies will automatically filter by user_id
+        // No need to explicitly add .eq('user_id', user.id)
         const { data, error } = await supabase
             .from('jewelry_designs')
             .select('*')
@@ -190,12 +266,14 @@ export const getJewelryDesigns = async (limit = 50) => {
 };
 
 /**
- * Retrieves all try-on results from the database
+ * Retrieves try-on results for the authenticated user
  * @param limit - Maximum number of results to retrieve
  * @returns Array of try-on results
  */
 export const getTryOnResults = async (limit = 50) => {
     try {
+        // RLS policies will automatically filter by user_id
+        // No need to explicitly add .eq('user_id', user.id)
         const { data, error } = await supabase
             .from('try_on_results')
             .select('*')

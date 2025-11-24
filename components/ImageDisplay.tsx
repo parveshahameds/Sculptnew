@@ -5,6 +5,7 @@ import { FullScreenImageModal } from './FullScreenImageModal';
 interface ImageDisplayProps {
   generatedImage: string | null;
   isLoading: boolean;
+  isRefining?: boolean;
   error: string | null;
 }
 
@@ -23,10 +24,15 @@ const Placeholder = () => (
     </div>
 )
 
-export const ImageDisplay: React.FC<ImageDisplayProps> = ({ generatedImage, isLoading, error }) => {
+export const ImageDisplay: React.FC<ImageDisplayProps> = ({
+  generatedImage,
+  isLoading,
+  isRefining = false,
+  error
+}) => {
   const [transform, setTransform] = useState({ scale: 1, x: 0, y: 0 });
   const [isModalOpen, setIsModalOpen] = useState(false);
-  
+
   const imageRef = useRef<HTMLImageElement>(null);
   const isPanning = useRef(false);
   const lastMousePos = useRef({ x: 0, y: 0 });
@@ -81,15 +87,16 @@ export const ImageDisplay: React.FC<ImageDisplayProps> = ({ generatedImage, isLo
   };
 
   return (
-    <>
-      <div className="w-full h-full min-h-[600px] relative overflow-hidden group cursor-default bg-white" onWheel={handleWheel}>
-          {isLoading && (
+    <div className="w-full h-full min-h-[600px] relative overflow-hidden group cursor-default bg-white" onWheel={handleWheel}>
+          {(isLoading || isRefining) && (
             <div className="absolute inset-0 bg-white/90 z-20 flex flex-col items-center justify-center backdrop-blur-sm">
               <Loader />
-              <p className="text-emerald-700 mt-6 font-bold text-sm tracking-widest uppercase animate-pulse">Rendering High Fidelity...</p>
+              <p className="text-emerald-700 mt-6 font-bold text-sm tracking-widest uppercase animate-pulse">
+                {isRefining ? 'Refining Design...' : 'Rendering High Fidelity...'}
+              </p>
             </div>
           )}
-          {error && !isLoading && (
+          {error && !isLoading && !isRefining && (
             <div className="flex flex-col items-center justify-center h-full text-center text-red-500 p-8">
               <div className="bg-red-50 p-4 rounded-full mb-4">
                 <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -100,7 +107,7 @@ export const ImageDisplay: React.FC<ImageDisplayProps> = ({ generatedImage, isLo
               <p className="text-sm text-red-400">{error}</p>
             </div>
           )}
-          {!isLoading && !error && generatedImage && (
+          {!isLoading && !isRefining && !error && generatedImage && (
             <>
               <div className="w-full h-full flex items-center justify-center bg-white">
                   <img
@@ -108,7 +115,7 @@ export const ImageDisplay: React.FC<ImageDisplayProps> = ({ generatedImage, isLo
                     src={`data:image/png;base64,${generatedImage}`}
                     alt={`Generated Jewelry`}
                     className="object-contain max-h-full max-w-full transition-transform duration-100 drop-shadow-2xl"
-                    style={{ 
+                    style={{
                       transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
                       cursor: transform.scale > 1 ? 'grab' : 'zoom-in',
                     }}
@@ -119,7 +126,7 @@ export const ImageDisplay: React.FC<ImageDisplayProps> = ({ generatedImage, isLo
                     draggable="false"
                   />
               </div>
-              
+
               {/* Overlay Controls */}
               <div className="absolute bottom-0 left-0 right-0 p-6 flex justify-center pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                    <p className="text-emerald-900 text-xs font-bold uppercase tracking-wider bg-white/80 backdrop-blur px-4 py-2 rounded-full shadow-sm border border-white/20">
@@ -127,7 +134,7 @@ export const ImageDisplay: React.FC<ImageDisplayProps> = ({ generatedImage, isLo
                    </p>
               </div>
 
-              <button 
+              <button
                 onClick={() => setIsModalOpen(true)}
                 className="absolute top-6 right-6 bg-white text-stone-600 hover:text-emerald-600 p-2.5 rounded-xl transition-all shadow-md opacity-0 group-hover:opacity-100 focus:opacity-100 border border-stone-100"
                 title="Full Screen"
@@ -138,17 +145,16 @@ export const ImageDisplay: React.FC<ImageDisplayProps> = ({ generatedImage, isLo
               </button>
             </>
           )}
-          {!isLoading && !error && !generatedImage && <Placeholder />}
-      </div>
+          {!isLoading && !isRefining && !error && !generatedImage && <Placeholder />}
 
       {generatedImage && (
-        <FullScreenImageModal 
+        <FullScreenImageModal
             isOpen={isModalOpen}
             onClose={() => setIsModalOpen(false)}
             imageSrc={`data:image/png;base64,${generatedImage}`}
             altText="Generated Jewelry Design"
         />
       )}
-    </>
+    </div>
   );
 };

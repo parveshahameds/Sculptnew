@@ -129,8 +129,9 @@ export const generateJewelryImage = async (
 };
 
 export const analyzeJewelryImage = async (
-    imageBase64: string
-): Promise<JewelrySpec> => {
+    imageBase64: string,
+    returnDesignId = false
+): Promise<JewelrySpec & { designId?: string }> => {
     if (!imageBase64 || imageBase64.trim() === '') {
         throw new Error('No image provided for analysis');
     }
@@ -235,6 +236,7 @@ Generate plausible specifications based on the visual information. Estimate dime
         const specs = parsedJson as JewelrySpec;
 
         // Auto-save to Supabase if we have pending design data
+        let savedDesignId: string | undefined;
         if (pendingDesignData) {
             try {
                 console.log('Auto-saving jewelry design to Supabase...');
@@ -248,6 +250,7 @@ Generate plausible specifications based on the visual information. Estimate dime
                     designSpecs: specs
                 });
                 console.log('Design saved to Supabase:', savedDesign);
+                savedDesignId = savedDesign.id;
 
                 // Clear pending data after successful save
                 pendingDesignData = null;
@@ -255,6 +258,10 @@ Generate plausible specifications based on the visual information. Estimate dime
                 console.error('Failed to auto-save design to Supabase:', saveError);
                 // Don't throw - allow the analysis to succeed even if save fails
             }
+        }
+
+        if (returnDesignId && savedDesignId) {
+            return { ...specs, designId: savedDesignId };
         }
 
         return specs;
