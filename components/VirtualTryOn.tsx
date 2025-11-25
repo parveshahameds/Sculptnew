@@ -381,6 +381,7 @@ export const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ generatedJewelryImag
         setMode('upload');
         stopCamera();
         setTryOnResult(null);
+        setError(null); // Clear any camera-related errors
     };
 
     const handleUploadFit = async () => {
@@ -416,13 +417,13 @@ export const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ generatedJewelryImag
                     </div>
                 )}
 
-                {error && (
+                {error && mode === 'camera' && (
                      <div className="absolute inset-0 z-40 flex items-center justify-center bg-stone-50 p-8 text-center">
                         <div>
                             <p className="text-red-500 font-bold mb-2">System Error</p>
                             <p className="text-stone-500 text-sm mb-4">{error}</p>
-                            <button 
-                                onClick={() => { setError(null); setMode('camera'); window.location.reload(); }} 
+                            <button
+                                onClick={() => { setError(null); setMode('camera'); window.location.reload(); }}
                                 className="bg-stone-200 hover:bg-stone-300 text-stone-700 px-4 py-2 rounded-lg text-xs font-bold uppercase transition-colors"
                             >
                                 Reload App
@@ -434,7 +435,7 @@ export const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ generatedJewelryImag
                 {tryOnResult ? (
                     <div className="w-full h-full relative animate-in fade-in">
                         <img src={`data:image/png;base64,${tryOnResult}`} className="w-full h-full object-contain bg-black" alt="Result" />
-                        
+
                         <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/90 via-black/50 to-transparent flex flex-col items-center gap-3">
                             <div className="flex gap-3">
                                 <button onClick={() => { setTryOnResult(null); if(mode === 'camera') startCamera(); }} className="px-6 py-3 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white rounded-xl text-xs font-bold uppercase border border-white/20 transition-all">
@@ -449,84 +450,82 @@ export const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ generatedJewelryImag
                             </div>
                         </div>
                     </div>
-                ) : (
-                    mode === 'camera' ? (
-                        <div className="w-full h-full relative bg-black flex items-center justify-center overflow-hidden">
-                            {/* Start Screen - z-index 10 to sit above video */}
-                            {!isCameraActive && (
-                                <div className="text-center relative z-10 p-6">
-                                    <div className="w-16 h-16 bg-stone-800 rounded-full flex items-center justify-center mx-auto mb-4 text-stone-500">
-                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.276A1 1 0 0121 8.818v6.364a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                        </svg>
-                                    </div>
-                                    <button 
-                                        onClick={startCamera} 
-                                        disabled={!isModelLoaded}
-                                        className="bg-emerald-900 disabled:bg-stone-600 text-white px-6 py-3 rounded-xl font-bold text-sm shadow-lg hover:bg-emerald-800 transition-all disabled:opacity-70 disabled:cursor-wait"
-                                    >
-                                        {isModelLoaded ? 'Activate Camera' : 'Loading AR Engine...'}
-                                    </button>
-                                    <p className="text-stone-500 text-xs mt-4 max-w-xs mx-auto">
-                                        {isModelLoaded ? 'Uses AI to map jewelry to your face in real-time.' : 'Initializing computer vision models...'}
-                                    </p>
+                ) : mode === 'camera' ? (
+                    <div className="w-full h-full relative bg-black flex items-center justify-center overflow-hidden">
+                        {/* Start Screen - z-index 10 to sit above video */}
+                        {!isCameraActive && (
+                            <div className="text-center relative z-10 p-6">
+                                <div className="w-16 h-16 bg-stone-800 rounded-full flex items-center justify-center mx-auto mb-4 text-stone-500">
+                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.276A1 1 0 0121 8.818v6.364a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                    </svg>
                                 </div>
-                            )}
-                            
-                            {/* Video Layer - z-index 0, pointer-events-none to prevent blocking clicks when opacity 0 */}
-                            <video 
-                                ref={videoRef} 
-                                autoPlay 
-                                playsInline 
-                                muted 
-                                className={`absolute inset-0 w-full h-full object-cover transform -scale-x-100 transition-opacity duration-500 z-0 ${isCameraActive ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} 
-                            />
-                            
-                            {/* AR Canvas Layer */}
-                            <canvas 
-                                ref={canvasRef}
-                                className="absolute inset-0 w-full h-full object-cover pointer-events-none z-10"
-                            />
+                                <button
+                                    onClick={startCamera}
+                                    disabled={!isModelLoaded}
+                                    className="bg-emerald-900 disabled:bg-stone-600 text-white px-6 py-3 rounded-xl font-bold text-sm shadow-lg hover:bg-emerald-800 transition-all disabled:opacity-70 disabled:cursor-wait"
+                                >
+                                    {isModelLoaded ? 'Activate Camera' : 'Loading AR Engine...'}
+                                </button>
+                                <p className="text-stone-500 text-xs mt-4 max-w-xs mx-auto">
+                                    {isModelLoaded ? 'Uses AI to map jewelry to your face in real-time.' : 'Initializing computer vision models...'}
+                                </p>
+                            </div>
+                        )}
 
-                            {/* Camera UI Overlay */}
-                            {isCameraActive && (
-                                <>
-                                    <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-black/30 backdrop-blur px-4 py-1.5 rounded-full border border-white/10 flex items-center gap-2 z-20">
-                                        <div className={`w-2 h-2 rounded-full ${physicsState.current.opacity > 0.5 ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.8)]' : 'bg-yellow-500'}`}></div>
-                                        <span className="text-[10px] font-bold text-white uppercase tracking-widest">
-                                            {physicsState.current.opacity > 0.5 ? 'Tracking Active' : 'Locating Face...'}
-                                        </span>
-                                    </div>
+                        {/* Video Layer - z-index 0, pointer-events-none to prevent blocking clicks when opacity 0 */}
+                        <video
+                            ref={videoRef}
+                            autoPlay
+                            playsInline
+                            muted
+                            className={`absolute inset-0 w-full h-full object-cover transform -scale-x-100 transition-opacity duration-500 z-0 ${isCameraActive ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+                        />
 
-                                    <div className="absolute bottom-8 left-0 right-0 flex justify-center z-20">
-                                        <button 
-                                            onClick={handleInstantSnapshot}
-                                            className="group relative w-16 h-16 flex items-center justify-center"
-                                            aria-label="Take Snapshot"
-                                        >
-                                            <div className="absolute inset-0 bg-white/20 rounded-full animate-pulse group-hover:animate-none"></div>
-                                            <div className="w-14 h-14 rounded-full border-4 border-white bg-transparent group-hover:bg-white/20 transition-all duration-200"></div>
-                                            <div className="absolute w-10 h-10 bg-white rounded-full group-hover:scale-90 transition-transform duration-200"></div>
-                                        </button>
-                                    </div>
-                                </>
-                            )}
-                        </div>
-                    ) : (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center p-8 bg-stone-50">
-                             <div className="w-full max-w-sm bg-white p-6 rounded-2xl shadow-sm border border-stone-100 text-center">
-                                <FileUpload id="tryon-upload" label="Upload Portrait" onFileChange={setPersonFile} />
-                                {personFile ? (
-                                    <button onClick={handleUploadFit} className="w-full mt-4 bg-emerald-900 text-white py-3 rounded-xl text-xs font-bold uppercase hover:bg-emerald-800 transition-colors shadow-lg">
-                                        Generate Fitting
+                        {/* AR Canvas Layer */}
+                        <canvas
+                            ref={canvasRef}
+                            className="absolute inset-0 w-full h-full object-cover pointer-events-none z-10"
+                        />
+
+                        {/* Camera UI Overlay */}
+                        {isCameraActive && (
+                            <>
+                                <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-black/30 backdrop-blur px-4 py-1.5 rounded-full border border-white/10 flex items-center gap-2 z-20">
+                                    <div className={`w-2 h-2 rounded-full ${physicsState.current.opacity > 0.5 ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.8)]' : 'bg-yellow-500'}`}></div>
+                                    <span className="text-[10px] font-bold text-white uppercase tracking-widest">
+                                        {physicsState.current.opacity > 0.5 ? 'Tracking Active' : 'Locating Face...'}
+                                    </span>
+                                </div>
+
+                                <div className="absolute bottom-8 left-0 right-0 flex justify-center z-20">
+                                    <button
+                                        onClick={handleInstantSnapshot}
+                                        className="group relative w-16 h-16 flex items-center justify-center"
+                                        aria-label="Take Snapshot"
+                                    >
+                                        <div className="absolute inset-0 bg-white/20 rounded-full animate-pulse group-hover:animate-none"></div>
+                                        <div className="w-14 h-14 rounded-full border-4 border-white bg-transparent group-hover:bg-white/20 transition-all duration-200"></div>
+                                        <div className="absolute w-10 h-10 bg-white rounded-full group-hover:scale-90 transition-transform duration-200"></div>
                                     </button>
-                                ) : (
-                                    <p className="text-xs text-stone-400 mt-4">Upload a clear portrait photo for best results.</p>
-                                )}
-                             </div>
-                        </div>
-                    )
-                )}
+                                </div>
+                            </>
+                        )}
+                    </div>
+                ) : mode === 'upload' ? (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center p-8 bg-stone-50">
+                         <div className="w-full max-w-sm bg-white p-6 rounded-2xl shadow-sm border border-stone-100 text-center">
+                            <FileUpload id="tryon-upload" label="Upload Portrait" onFileChange={setPersonFile} />
+                            {personFile ? (
+                                <button onClick={handleUploadFit} className="w-full mt-4 bg-emerald-900 text-white py-3 rounded-xl text-xs font-bold uppercase hover:bg-emerald-800 transition-colors shadow-lg">
+                                    Generate Fitting
+                                </button>
+                            ) : (
+                                <p className="text-xs text-stone-400 mt-4">Upload a clear portrait photo for best results.</p>
+                            )}
+                         </div>
+                    </div>
+                ) : null}
             </div>
 
             {tryOnResult && (

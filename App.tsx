@@ -289,7 +289,7 @@ const App: React.FC = () => {
                     disabled={!generatedImage}
                  />
 
-                 <div className="bg-white p-5 rounded-2xl shadow-sm border border-stone-100 min-h-[300px]">
+                 <div className="bg-white rounded-2xl shadow-sm border border-stone-100 h-[400px] overflow-hidden">
                     <VirtualTryOn generatedJewelryImage={generatedImage || ''} jewelryType={jewelryType} />
                  </div>
             </div>
