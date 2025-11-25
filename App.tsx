@@ -3,7 +3,9 @@ import React, { useState, useCallback } from 'react';
 import { Header } from './components/Header';
 import { OptionSelector } from './components/OptionSelector';
 import { ImageDisplay } from './components/ImageDisplay';
+import { RefinementPanel } from './components/RefinementPanel';
 import { generateJewelryImage, analyzeJewelryImage } from './services/geminiService';
+import { refineJewelryImage } from './services/imageEditService';
 import { JEWELRY_TYPES, MATERIALS, GEMSTONES, ENGRAVING_STYLES } from './constants';
 import { VisionInput } from './components/VisionInput';
 import { FileUpload } from './components/FileUpload';
@@ -11,9 +13,17 @@ import { ManufacturingDetails } from './components/ManufacturingDetails';
 import { VirtualTryOn } from './components/VirtualTryOn';
 import { GalleryModal, type GalleryItem } from './components/GalleryModal';
 import type { JewelrySpec } from './components/ManufacturingDetails';
+import { useAuth } from './contexts/AuthContext';
+import LoginModal from './components/LoginModal';
+
+interface RefinementHistory {
+  prompt: string;
+  timestamp: Date;
+}
 
 
 const App: React.FC = () => {
+  const { user, loading } = useAuth();
   const [description, setDescription] = useState<string>('');
   const [jewelryType, setJewelryType] = useState<string>(JEWELRY_TYPES[0]);
   const [material, setMaterial] = useState<string>(MATERIALS[0]);
@@ -23,10 +33,14 @@ const App: React.FC = () => {
   const [engravingStyle, setEngravingStyle] = useState<string>(ENGRAVING_STYLES[0]);
 
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+  const [originalImage, setOriginalImage] = useState<string | null>(null);
+  const [currentDesignId, setCurrentDesignId] = useState<string | null>(null);
   const [specs, setSpecs] = useState<JewelrySpec | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isRefining, setIsRefining] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [isGalleryOpen, setIsGalleryOpen] = useState<boolean>(false);
+  const [refinementHistory, setRefinementHistory] = useState<RefinementHistory[]>([]);
 
   const fileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -44,10 +58,13 @@ const App: React.FC = () => {
     setIsLoading(true);
     setError(null);
     setGeneratedImage(null);
+    setOriginalImage(null);
+    setCurrentDesignId(null);
     setSpecs(null);
+    setRefinementHistory([]);
 
     try {
-        const prompt = `Design a ${jewelryType} made of ${material} with ${gemstone} gemstones. 
+        const prompt = `Design a ${jewelryType} made of ${material} with ${gemstone} gemstones.
         Style: High jewelry, photorealistic, 8k resolution, white background, soft studio lighting.
         Description: ${description}.
         ${engravingFile ? `Feature this engraving pattern/image subtly on the metal surface: ${engravingStyle}.` : ''}`;
@@ -62,11 +79,22 @@ const App: React.FC = () => {
              imageInputs.push({ base64, mimeType: engravingFile.type });
         }
 
-        const imageBase64 = await generateJewelryImage(prompt, imageInputs);
+        const imageBase64 = await generateJewelryImage(prompt, imageInputs, {
+            jewelryType,
+            material,
+            gemstone,
+            engravingStyle: engravingFile ? engravingStyle : undefined
+        });
         setGeneratedImage(imageBase64);
+        setOriginalImage(imageBase64);
 
-        const analysis = await analyzeJewelryImage(imageBase64);
+        const analysis = await analyzeJewelryImage(imageBase64, true);
         setSpecs(analysis);
+
+        // Capture the design ID if saved
+        if ('designId' in analysis && analysis.designId) {
+            setCurrentDesignId(analysis.designId);
+        }
 
     } catch (e) {
         if (e instanceof Error) setError(e.message);
@@ -76,12 +104,56 @@ const App: React.FC = () => {
     }
   };
 
+  const handleRefine = async (refinementPrompt: string) => {
+    if (!generatedImage) return;
+
+    setIsRefining(true);
+    setError(null);
+
+    try {
+        const contextPrompt = `${jewelryType} made of ${material} with ${gemstone} gemstones. ${description}`;
+
+        const result = await refineJewelryImage({
+            originalImageBase64: generatedImage,
+            refinementPrompt,
+            contextPrompt,
+            designId: currentDesignId || undefined
+        });
+
+        setGeneratedImage(result.refinedImageBase64);
+        setRefinementHistory(prev => [...prev, {
+            prompt: refinementPrompt,
+            timestamp: new Date()
+        }]);
+
+        // Use updated specs from refinement if available
+        if (result.updatedSpecs) {
+            setSpecs(result.updatedSpecs);
+        }
+
+    } catch (e) {
+        if (e instanceof Error) setError(e.message);
+        else setError("Refinement failed. Please try again.");
+    } finally {
+        setIsRefining(false);
+    }
+  };
+
+  const handleResetToOriginal = () => {
+    if (originalImage) {
+        setGeneratedImage(originalImage);
+        setRefinementHistory([]);
+    }
+  };
+
   const handleGallerySelect = async (item: GalleryItem) => {
       setIsGalleryOpen(false);
       setIsLoading(true);
       setError(null);
       setGeneratedImage(null);
+      setOriginalImage(null);
       setSpecs(null);
+      setRefinementHistory([]);
 
       // Pre-fill data
       setDescription(item.description);
@@ -95,7 +167,7 @@ const App: React.FC = () => {
           const response = await fetch(item.imageUrl);
           if (!response.ok) throw new Error('Failed to fetch gallery image');
           const blob = await response.blob();
-          
+
           // 2. Convert to Base64 for consistency with Generate flow
           const reader = new FileReader();
           reader.onloadend = async () => {
@@ -103,6 +175,7 @@ const App: React.FC = () => {
               // data:image/jpeg;base64,....
               const base64String = base64Data.split(',')[1];
               setGeneratedImage(base64String);
+              setOriginalImage(base64String);
 
               // 3. Analyze the existing image
               try {
@@ -122,6 +195,23 @@ const App: React.FC = () => {
           setIsLoading(false);
       }
   };
+
+  // Show loading state while checking authentication
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-stone-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-emerald-900 mx-auto mb-4"></div>
+          <p className="text-stone-600 font-medium">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show login modal if user is not authenticated
+  if (!user) {
+    return <LoginModal />;
+  }
 
   return (
     <div className="min-h-screen bg-stone-50 text-stone-800 font-sans selection:bg-emerald-100 selection:text-emerald-900">
@@ -176,15 +266,29 @@ const App: React.FC = () => {
 
             {/* Center Column: Image Display */}
             <div className="lg:col-span-6 h-[calc(100vh-6rem)] rounded-2xl overflow-hidden shadow-xl border border-stone-200 bg-white relative">
-                 <ImageDisplay generatedImage={generatedImage} isLoading={isLoading} error={error} />
+                 <ImageDisplay
+                    generatedImage={generatedImage}
+                    isLoading={isLoading}
+                    isRefining={isRefining}
+                    error={error}
+                 />
             </div>
 
-            {/* Right Column: Details & Try-On */}
+            {/* Right Column: Details, Refinement & Try-On */}
             <div className="lg:col-span-3 space-y-6 overflow-y-auto h-[calc(100vh-6rem)] custom-scrollbar pl-2 pb-20">
                  <div className="bg-white p-5 rounded-2xl shadow-sm border border-stone-100 min-h-[200px]">
                     <ManufacturingDetails details={specs} isLoading={isLoading && !generatedImage} error={error} />
                  </div>
-                 
+
+                 <RefinementPanel
+                    onRefine={handleRefine}
+                    isRefining={isRefining}
+                    history={refinementHistory}
+                    onReset={handleResetToOriginal}
+                    hasOriginal={!!originalImage && originalImage !== generatedImage}
+                    disabled={!generatedImage}
+                 />
+
                  <div className="bg-white p-5 rounded-2xl shadow-sm border border-stone-100 min-h-[300px]">
                     <VirtualTryOn generatedJewelryImage={generatedImage || ''} jewelryType={jewelryType} />
                  </div>
