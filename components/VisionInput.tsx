@@ -71,7 +71,7 @@ export const VisionInput: React.FC<VisionInputProps> = ({
         >
             {imagePreview && (
                 <div className="p-3 border-b border-stone-200 bg-white rounded-t-xl">
-                    <div className="relative w-full h-32 rounded-lg overflow-hidden group/img border border-stone-100">
+                    <div className="relative w-full h-28 rounded-lg overflow-hidden group/img border border-stone-100">
                         <img src={imagePreview} alt="Inspiration preview" className="w-full h-full object-cover opacity-95" />
                         <div className="absolute inset-0 bg-black/20 hidden group-hover/img:flex items-center justify-center transition-all">
                              <button
@@ -89,7 +89,7 @@ export const VisionInput: React.FC<VisionInputProps> = ({
 
             <textarea
                 id="description"
-                rows={4}
+                rows={3}
                 className="w-full bg-transparent p-4 border-0 text-stone-800 placeholder-stone-400 focus:ring-0 resize-none font-normal text-base"
                 placeholder="Describe your masterpiece (e.g., 'A vintage art deco ring with sapphire center')..."
                 value={description}

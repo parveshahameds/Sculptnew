@@ -15,6 +15,7 @@ import { GalleryModal, type GalleryItem } from './components/GalleryModal';
 import type { JewelrySpec } from './components/ManufacturingDetails';
 import { useAuth } from './contexts/AuthContext';
 import LoginModal from './components/LoginModal';
+import { ScrollPanel } from './components/ScrollPanel';
 
 interface RefinementHistory {
   prompt: string;
@@ -199,10 +200,10 @@ const App: React.FC = () => {
   // Show loading state while checking authentication
   if (loading) {
     return (
-      <div className="min-h-screen bg-stone-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #FDFBF7 0%, #F5F1E8 100%)' }}>
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-emerald-900 mx-auto mb-4"></div>
-          <p className="text-stone-600 font-medium">Loading...</p>
+          <div className="animate-spin rounded-full h-16 w-16 mx-auto mb-5" style={{ border: '3px solid transparent', borderTopColor: '#B8941F', borderRightColor: '#D4AF37' }}></div>
+          <p className="font-medium text-[14px] tracking-wide" style={{ color: '#8B8680' }}>Loading...</p>
         </div>
       </div>
     );
@@ -214,15 +215,19 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-stone-50 text-stone-800 font-sans selection:bg-emerald-100 selection:text-emerald-900">
-      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
-        <Header onOpenGallery={() => setIsGalleryOpen(true)} />
+    <div className="h-screen flex flex-col overflow-hidden font-sans" style={{ background: 'linear-gradient(to bottom, #FDFBF7 0%, #F5F1E8 100%)', color: '#2C2C2C' }}>
+      <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 w-full flex flex-col h-full">
+        <div className="flex-shrink-0">
+          <Header onOpenGallery={() => setIsGalleryOpen(true)} />
+        </div>
         
-        <main className="pb-12 pt-4 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <main className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-5 xl:gap-6 pt-4 lg:pt-5 min-h-0">
             {/* Left Column: Controls */}
-            <div className="lg:col-span-3 space-y-6 overflow-y-auto h-[calc(100vh-6rem)] custom-scrollbar pr-2 pb-20">
-                <div className="bg-white p-5 rounded-2xl shadow-sm border border-stone-100 space-y-5">
-                    <h2 className="font-serif text-xl font-bold text-emerald-900 border-b border-stone-100 pb-3">Configuration</h2>
+            <div className="lg:col-span-3 min-h-0 flex flex-col">
+              <ScrollPanel className="px-1">
+                <div className="space-y-4 lg:space-y-5 pb-6">
+                <div className="bg-white p-4 lg:p-5 xl:p-6 rounded-xl lg:rounded-2xl shadow-sm border space-y-4 lg:space-y-5" style={{ borderColor: 'rgba(44, 44, 44, 0.08)' }}>
+                    <h2 className="font-serif text-[18px] lg:text-[20px] border-b pb-3 lg:pb-4" style={{ color: '#2C2C2C', fontWeight: 500, letterSpacing: '0.01em', borderColor: 'rgba(44, 44, 44, 0.06)' }}>Configuration</h2>
                     
                     <VisionInput 
                         description={description} 
@@ -238,8 +243,8 @@ const App: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="bg-white p-5 rounded-2xl shadow-sm border border-stone-100 space-y-5">
-                     <h2 className="font-serif text-xl font-bold text-emerald-900 border-b border-stone-100 pb-3">Customization</h2>
+                <div className="bg-white p-4 lg:p-5 xl:p-6 rounded-xl lg:rounded-2xl shadow-sm border space-y-4 lg:space-y-5" style={{ borderColor: 'rgba(44, 44, 44, 0.08)' }}>
+                     <h2 className="font-serif text-[18px] lg:text-[20px] border-b pb-3 lg:pb-4" style={{ color: '#2C2C2C', fontWeight: 500, letterSpacing: '0.01em', borderColor: 'rgba(44, 44, 44, 0.06)' }}>Customization</h2>
                      <FileUpload id="engraving-upload" label="Upload Engraving / Pattern" onFileChange={setEngravingFile} />
                      {engravingFile && (
                          <OptionSelector label="Application Style" value={engravingStyle} onChange={setEngravingStyle} options={ENGRAVING_STYLES} />
@@ -249,23 +254,26 @@ const App: React.FC = () => {
                 <button 
                     onClick={handleGenerate}
                     disabled={isLoading}
-                    className="w-full bg-emerald-900 hover:bg-emerald-800 text-white font-bold py-4 px-6 rounded-xl transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed shadow-lg hover:shadow-xl hover:-translate-y-0.5 flex items-center justify-center gap-2 group"
+                    className="w-full bg-gradient-to-r from-[#B8941F] to-[#D4AF37] hover:from-[#9A7D19] hover:to-[#B8941F] text-white font-medium py-3 lg:py-3.5 xl:py-4 px-5 lg:px-6 rounded-lg lg:rounded-xl transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed shadow-lg hover:shadow-xl hover:-translate-y-0.5 flex items-center justify-center gap-2 lg:gap-2.5 group text-[13px] lg:text-[14px]"
+                    style={{ letterSpacing: '0.03em' }}
                 >
                     {isLoading ? (
                         <span>Crafting your masterpiece...</span>
                     ) : (
                         <>
                             <span>Generate Design</span>
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 group-hover:rotate-12 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 group-hover:rotate-12 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
                             </svg>
                         </>
                     )}
                 </button>
+                </div>
+              </ScrollPanel>
             </div>
 
             {/* Center Column: Image Display */}
-            <div className="lg:col-span-6 h-[calc(100vh-6rem)] rounded-2xl overflow-hidden shadow-xl border border-stone-200 bg-white relative">
+            <div className="lg:col-span-6 mb-4 min-h-0 rounded-xl lg:rounded-2xl overflow-hidden shadow-xl border relative" style={{ borderColor: 'rgba(44, 44, 44, 0.08)', boxShadow: '0 4px 24px rgba(44, 44, 44, 0.08), 0 2px 8px rgba(184, 148, 31, 0.05)' }}>
                  <ImageDisplay
                     generatedImage={generatedImage}
                     isLoading={isLoading}
@@ -275,8 +283,10 @@ const App: React.FC = () => {
             </div>
 
             {/* Right Column: Details, Refinement & Try-On */}
-            <div className="lg:col-span-3 space-y-6 overflow-y-auto h-[calc(100vh-6rem)] custom-scrollbar pl-2 pb-20">
-                 <div className="bg-white p-5 rounded-2xl shadow-sm border border-stone-100 min-h-[200px]">
+            <div className="lg:col-span-3 min-h-0 flex flex-col">
+              <ScrollPanel className="px-1">
+                <div className="space-y-4 lg:space-y-5 pb-6">
+                 <div className="bg-white p-4 lg:p-5 xl:p-6 rounded-xl lg:rounded-2xl shadow-sm border min-h-[180px] lg:min-h-[200px]" style={{ borderColor: 'rgba(44, 44, 44, 0.08)' }}>
                     <ManufacturingDetails details={specs} isLoading={isLoading && !generatedImage} error={error} />
                  </div>
 
@@ -289,9 +299,11 @@ const App: React.FC = () => {
                     disabled={!generatedImage}
                  />
 
-                 <div className="bg-white rounded-2xl shadow-sm border border-stone-100 h-[400px] overflow-hidden">
+                 <div className="bg-white rounded-2xl shadow-sm border overflow-hidden h-[400px]" style={{ borderColor: 'rgba(44, 44, 44, 0.08)', minHeight: '350px', maxHeight: '450px' }}>
                     <VirtualTryOn generatedJewelryImage={generatedImage || ''} jewelryType={jewelryType} />
                  </div>
+                </div>
+              </ScrollPanel>
             </div>
         </main>
         
