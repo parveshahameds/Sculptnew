@@ -64,7 +64,7 @@ export const VisionInput: React.FC<VisionInputProps> = ({
     <div className="relative">
         <label htmlFor="description" className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-3">Vision</label>
         <div 
-            className={`relative w-full rounded-xl transition-all duration-300 border-2 ${isDragging ? 'border-emerald-500 bg-emerald-50' : 'border-stone-200 bg-stone-50 hover:border-emerald-300'}`}
+            className={`relative w-full rounded-xl transition-all duration-300 border-2 ${isDragging ? 'border-amber-500 bg-amber-50' : 'border-stone-200 bg-stone-50 hover:border-amber-300'}`}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
@@ -97,13 +97,13 @@ export const VisionInput: React.FC<VisionInputProps> = ({
             />
             
             <div className="flex justify-between items-center px-4 py-2 border-t border-stone-200/60 bg-white/50 rounded-b-xl">
-                 <span className={`text-[10px] uppercase tracking-widest font-bold ${isDragging ? 'text-emerald-600' : 'text-stone-400'}`}>
+                 <span className={`text-[10px] uppercase tracking-widest font-bold ${isDragging ? 'text-amber-600' : 'text-stone-400'}`}>
                     {isDragging ? 'Drop Image Here' : 'Drag Inspiration Image'}
                  </span>
                  <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="text-stone-400 hover:text-emerald-600 transition-colors p-1"
+                    className="text-stone-400 hover:text-amber-600 transition-colors p-1"
                     title="Upload Image"
                  >
                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

@@ -264,7 +264,7 @@ export const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ generatedJewelryImag
                                 <button onClick={() => { setTryOnResult(null); if(mode === 'camera') startCamera(); }} className="px-6 py-3 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white rounded-xl text-xs font-bold uppercase border border-white/20 transition-all">
                                     Retake
                                 </button>
-                                <button onClick={() => setIsModalOpen(true)} className="px-6 py-3 bg-emerald-500 hover:bg-emerald-400 text-white shadow-lg shadow-emerald-900/20 rounded-xl text-xs font-bold uppercase transition-all flex items-center gap-2">
+                                <button onClick={() => setIsModalOpen(true)} className="px-6 py-3 bg-amber-500 hover:bg-amber-400 text-white shadow-lg shadow-amber-900/20 rounded-xl text-xs font-bold uppercase transition-all flex items-center gap-2">
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                                     </svg>
@@ -364,7 +364,7 @@ export const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ generatedJewelryImag
                          <div className="w-full max-w-sm bg-white p-6 rounded-2xl shadow-sm border border-stone-100 text-center">
                             <FileUpload id="tryon-upload" label="Upload Portrait" onFileChange={setPersonFile} />
                             {personFile ? (
-                                <button onClick={handleUploadFit} className="w-full mt-4 bg-emerald-900 text-white py-3 rounded-xl text-xs font-bold uppercase hover:bg-emerald-800 transition-colors shadow-lg">
+                                <button onClick={handleUploadFit} className="w-full mt-4 bg-amber-900 text-white py-3 rounded-xl text-xs font-bold uppercase hover:bg-amber-800 transition-colors shadow-lg">
                                     Generate Fitting
                                 </button>
                             ) : (
