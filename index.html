@@ -5,37 +5,117 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>GemJewel AI Designer</title>
+    <title>Sculpt — Atelier of Fine Jewellery</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
+      :root {
+        /* Premium Luxury Palette */
+        --color-champagne: #F5F1E8;
+        --color-pearl: #FDFBF7;
+        --color-charcoal: #2C2C2C;
+        --color-slate: #4A4A4A;
+        --color-warm-grey: #8B8680;
+        --color-gold-light: #D4AF37;
+        --color-gold: #B8941F;
+        --color-gold-dark: #9A7D19;
+        --color-platinum: #E5E4E2;
+        --color-accent-shine: rgba(212, 175, 55, 0.08);
+        --color-shadow-soft: rgba(44, 44, 44, 0.06);
+        --color-shadow-medium: rgba(44, 44, 44, 0.12);
+      }
+      
       body {
-        font-family: 'Inter', sans-serif;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        background: var(--color-pearl);
+        color: var(--color-charcoal);
+        font-weight: 400;
+        letter-spacing: 0.01em;
       }
-      h1, h2, h3, .font-serif {
+      
+      h1, h2, h3, h4, h5, h6, .font-serif {
         font-family: 'Cormorant Garamond', serif;
+        font-weight: 500;
+        letter-spacing: 0.02em;
       }
-      /* Custom Scrollbar for Light Theme */
+      
+      /* Refined Scrollbar */
       ::-webkit-scrollbar {
-        width: 8px;
+        width: 5px;
+        height: 5px;
       }
       ::-webkit-scrollbar-track {
-        background: #f5f5f4; 
+        background: transparent;
       }
       ::-webkit-scrollbar-thumb {
-        background: #d6d3d1; 
-        border-radius: 4px;
+        background: linear-gradient(180deg, rgba(212, 175, 55, 0.3) 0%, rgba(184, 148, 31, 0.3) 100%);
+        border-radius: 3px;
       }
       ::-webkit-scrollbar-thumb:hover {
-        background: #a8a29e; 
+        background: linear-gradient(180deg, rgba(212, 175, 55, 0.5) 0%, rgba(184, 148, 31, 0.5) 100%);
+      }
+      
+      /* Responsive viewport management */
+      @media (max-height: 800px) {
+        :root {
+          --spacing-scale: 0.9;
+        }
+      }
+      
+      @media (max-height: 700px) {
+        :root {
+          --spacing-scale: 0.85;
+        }
+      }
+      
+      /* Smooth scrolling for all panels */
+      .scroll-smooth {
+        scroll-behavior: smooth;
+      }
+      
+      /* Subtle shimmer effect for premium elements */
+      @keyframes shimmer {
+        0% { background-position: -200% center; }
+        100% { background-position: 200% center; }
+      }
+      
+      .shimmer-gold {
+        background: linear-gradient(
+          90deg,
+          var(--color-gold) 0%,
+          var(--color-gold-light) 50%,
+          var(--color-gold) 100%
+        );
+        background-size: 200% auto;
+      }
+      
+      .shimmer-animate {
+        animation: shimmer 3s linear infinite;
+      }
+      
+      /* Elegant focus states */
+      *:focus-visible {
+        outline: 2px solid var(--color-gold-light);
+        outline-offset: 2px;
+      }
+      
+      /* Premium selection */
+      ::selection {
+        background: var(--color-gold-light);
+        color: white;
+      }
+      
+      /* Smooth transitions for all interactive elements */
+      button, input, textarea, select, a {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       }
     </style>
   <script type="importmap">
 </script>
 </head>
-  <body class="bg-stone-50 text-stone-800 antialiased selection:bg-emerald-800 selection:text-white">
+  <body class="antialiased">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
   </body>

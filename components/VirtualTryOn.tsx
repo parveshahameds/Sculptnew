@@ -16,7 +16,7 @@ const NECKLACE_SCALE_FACTOR = 1.8; // Width relative to face
 
 export const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ generatedJewelryImage, jewelryType }) => {
     // UI State
-    const [mode, setMode] = useState<'camera' | 'upload'>('camera');
+    const [mode, setMode] = useState<'camera' | 'upload'>('upload');
     const [isCameraActive, setIsCameraActive] = useState(false);
     const [isModelLoaded, setIsModelLoaded] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
@@ -29,6 +29,7 @@ export const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ generatedJewelryImag
     // Image Processing State
     const [arImageSrc, setArImageSrc] = useState<string | null>(null);
     const [personFile, setPersonFile] = useState<File | null>(null);
+    const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
 
     // Refs for Tracking Loop
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -51,107 +52,22 @@ export const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ generatedJewelryImag
     // --- 1. Initialization & Cleanup ---
 
     useEffect(() => {
-        let isMounted = true;
-
-        const loadModel = async () => {
-            if (landmarkerRef.current) {
-                setIsModelLoaded(true);
-                return;
-            }
-
-            try {
-                setIsModelLoaded(false);
-                // Dynamically import MediaPipe Tasks Vision
-                // @ts-ignore
-                const vision = await import("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/+esm");
-                
-                if (!isMounted) return;
-
-                const { FaceLandmarker, FilesetResolver } = vision;
-                const filesetResolver = await FilesetResolver.forVisionTasks(
-                    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm"
-                );
-
-                if (!isMounted) return;
-
-                landmarkerRef.current = await FaceLandmarker.createFromOptions(filesetResolver, {
-                    baseOptions: {
-                        modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task`,
-                        delegate: "CPU" // Use CPU for broader compatibility
-                    },
-                    outputFaceBlendshapes: false,
-                    runningMode: "VIDEO",
-                    numFaces: 1,
-                    minFaceDetectionConfidence: 0.3, // Lower threshold for better detection
-                    minFacePresenceConfidence: 0.3,
-                    minTrackingConfidence: 0.3
-                });
-                
-                console.log("AR Model loaded successfully");
-                if (isMounted) setIsModelLoaded(true);
-            } catch (err) {
-                console.error("Failed to load tracking model", err);
-                let errorMessage = "Failed to load AR engine.";
-                if (err instanceof Error) errorMessage += ` ${err.message}`;
-                if (isMounted) setError(errorMessage);
-            }
-        };
-        
-        loadModel();
-
         return () => {
-            isMounted = false;
             stopCamera();
-            if (requestRef.current) cancelAnimationFrame(requestRef.current);
         };
     }, []);
 
-    // --- 2. Image Processing (Remove Background) ---
-
-    useEffect(() => {
-        if (generatedJewelryImage) {
-            processImageForAR(generatedJewelryImage);
-        }
-    }, [generatedJewelryImage]);
-
-    const processImageForAR = (base64: string) => {
-        const img = new Image();
-        img.crossOrigin = "anonymous";
-        img.onload = () => {
-            const canvas = document.createElement('canvas');
-            canvas.width = img.width;
-            canvas.height = img.height;
-            const ctx = canvas.getContext('2d');
-            if (!ctx) return;
-
-            ctx.drawImage(img, 0, 0);
-            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const data = imageData.data;
-
-            // Simple White Background Removal
-            for (let i = 0; i < data.length; i += 4) {
-                const r = data[i];
-                const g = data[i + 1];
-                const b = data[i + 2];
-                // If pixel is very light (white background), make it transparent
-                if (r > 230 && g > 230 && b > 230) {
-                    data[i + 3] = 0;
-                }
-            }
-            ctx.putImageData(imageData, 0, 0);
-            setArImageSrc(canvas.toDataURL('image/png'));
-        };
-        img.src = `data:image/png;base64,${base64}`;
-    };
+    // --- 2. Camera Capture for Upload ---
 
     // --- 3. Camera Control ---
 
     const startCamera = async () => {
         try {
             setError(null);
+            setCapturedPhoto(null);
             
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                throw new Error("Browser API not supported. Please use a modern browser with SSL.");
+                throw new Error("Camera not supported. Please use a modern browser.");
             }
 
             const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -160,17 +76,10 @@ export const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ generatedJewelryImag
             
             if (videoRef.current) {
                 videoRef.current.srcObject = stream;
-                // Wait for metadata to ensure dimensions are known
                 videoRef.current.onloadedmetadata = () => {
                     if (videoRef.current) {
                         videoRef.current.play().catch(e => console.error("Play failed", e));
-                        
-                        // Sync state and Ref
                         setIsCameraActive(true);
-                        isCameraActiveRef.current = true;
-
-                        // Give video a moment to actually have data before predicting
-                        setTimeout(() => predictWebcam(), 100);
                     }
                 };
             }
@@ -186,202 +95,73 @@ export const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ generatedJewelryImag
             stream.getTracks().forEach(track => track.stop());
             videoRef.current.srcObject = null;
         }
-        // Sync state and Ref
         setIsCameraActive(false);
-        isCameraActiveRef.current = false;
-        
-        if (requestRef.current) {
-            cancelAnimationFrame(requestRef.current);
-            requestRef.current = null;
-        }
-        physicsState.current.opacity = 0; // Reset visibility
     };
 
-    // --- 4. The Physics Loop (Tracking) ---
+    // --- 4. Camera Capture ---
 
-    const lerp = (start: number, end: number, amt: number) => (1 - amt) * start + amt * end;
-
-    const predictWebcam = () => {
-        // Use Ref for checking active state to avoid closure stale state issues
-        if (!isCameraActiveRef.current) return;
-
-        // If camera stopped or ref missing, exit loop
-        if (!videoRef.current) return;
-        
-        // If landmarker not ready yet, just loop until it is
-        if (!landmarkerRef.current) {
-             requestRef.current = requestAnimationFrame(predictWebcam);
-             return;
-        }
-
-        const video = videoRef.current;
-
-        // IMPORTANT: Ensure video has data before trying to detect
-        if (video.readyState < 2) {
-             requestRef.current = requestAnimationFrame(predictWebcam);
-             return;
-        }
-
-        // Perform detection
-        try {
-            // Using performance.now() for consistent timing
-            const startTimeMs = performance.now();
-            const results = landmarkerRef.current.detectForVideo(video, startTimeMs);
-
-            if (results.faceLandmarks && results.faceLandmarks.length > 0) {
-                const landmarks = results.faceLandmarks[0];
-                
-                // --- ANCHOR LOGIC ---
-                const nose = landmarks[1];
-                const chin = landmarks[152];
-                const leftTemple = landmarks[234];
-                const rightTemple = landmarks[454];
-
-                // Face Geometry
-                const faceWidth = Math.sqrt(Math.pow(rightTemple.x - leftTemple.x, 2) + Math.pow(rightTemple.y - leftTemple.y, 2));
-                const faceAngle = Math.atan2(rightTemple.y - leftTemple.y, rightTemple.x - leftTemple.x) * (180 / Math.PI);
-
-                let targetX, targetY, targetScale;
-
-                const typeLower = jewelryType.toLowerCase();
-                
-                if (typeLower.includes('necklace') || typeLower.includes('haar') || typeLower.includes('mangalsutra') || typeLower.includes('choker')) {
-                    // Necklace Logic
-                    const vecX = chin.x - nose.x;
-                    const vecY = chin.y - nose.y;
-                    
-                    const drop = typeLower.includes('choker') ? 0.5 : (typeLower.includes('long') ? 2.5 : 1.0);
-                    
-                    targetX = chin.x + (vecX * drop);
-                    targetY = chin.y + (vecY * drop);
-                    
-                    targetScale = faceWidth * (typeLower.includes('choker') ? 1.4 : NECKLACE_SCALE_FACTOR);
-
-                } else if (typeLower.includes('earring') || typeLower.includes('jhumka')) {
-                    // Earring Logic
-                    targetX = (leftTemple.x + rightTemple.x) / 2;
-                    targetY = chin.y - (chin.y - nose.y) * 0.5; 
-                    targetScale = faceWidth * 1.5;
-                } else if (typeLower.includes('nath') || typeLower.includes('nose')) {
-                    targetX = nose.x;
-                    targetY = nose.y;
-                    targetScale = faceWidth * 0.5;
-                } else if (typeLower.includes('tikka') || typeLower.includes('matha')) {
-                    targetX = (leftTemple.x + rightTemple.x) / 2;
-                    targetY = leftTemple.y - (chin.y - nose.y);
-                    targetScale = faceWidth * 0.8;
-                } else {
-                    targetX = chin.x;
-                    targetY = chin.y + 0.2;
-                    targetScale = faceWidth * 2.0;
-                }
-
-                // --- PHYSICS ENGINE (LERP) ---
-                const ps = physicsState.current;
-                ps.x = lerp(ps.x, targetX, SMOOTHING_FACTOR);
-                ps.y = lerp(ps.y, targetY, SMOOTHING_FACTOR);
-                ps.scale = lerp(ps.scale, targetScale, SMOOTHING_FACTOR);
-                ps.rotation = lerp(ps.rotation, faceAngle, SMOOTHING_FACTOR);
-                ps.opacity = lerp(ps.opacity, 1, 0.05);
-
-            } else {
-                physicsState.current.opacity = lerp(physicsState.current.opacity, 0, 0.1);
-            }
-        } catch (e) {
-            console.warn("Tracking error frame dropped:", e);
-            // Don't stop the loop, just skip this frame
-        }
-        
-        drawAROverlay();
-
-        // Continue loop if active
-        if (isCameraActiveRef.current) {
-            requestRef.current = requestAnimationFrame(predictWebcam);
-        }
-    };
-
-    const drawAROverlay = () => {
-        if (!canvasRef.current || !videoRef.current || !arImageSrc) return;
-        
-        const ctx = canvasRef.current.getContext('2d');
-        if (!ctx) return;
-
-        const videoWidth = videoRef.current.videoWidth;
-        const videoHeight = videoRef.current.videoHeight;
-
-        // Ensure canvas matches video
-        if (canvasRef.current.width !== videoWidth || canvasRef.current.height !== videoHeight) {
-            canvasRef.current.width = videoWidth;
-            canvasRef.current.height = videoHeight;
-        }
-
-        ctx.clearRect(0, 0, videoWidth, videoHeight);
-
-        const ps = physicsState.current;
-        if (ps.opacity < 0.01) return;
-
-        const img = new Image();
-        img.src = arImageSrc;
-        
-        if (img.complete) {
-            ctx.save();
-            ctx.globalAlpha = ps.opacity;
-            
-            // Mirror context to match mirrored video
-            ctx.translate(videoWidth, 0);
-            ctx.scale(-1, 1);
-            
-            const drawX = ps.x * videoWidth;
-            const drawY = ps.y * videoHeight;
-            
-            const targetPixelWidth = ps.scale * videoWidth * 2.5;
-            const scaleRatio = targetPixelWidth / img.width;
-
-            ctx.translate(drawX, drawY);
-            ctx.rotate(ps.rotation * (Math.PI / 180));
-            ctx.scale(scaleRatio, scaleRatio);
-            
-            ctx.drawImage(img, -img.width / 2, -img.height / 2);
-            
-            ctx.restore();
-        }
-    };
-
-
-    // --- 5. Instant Snapshot ---
-
-    const handleInstantSnapshot = () => {
+    const capturePhoto = () => {
         if (!videoRef.current || !canvasRef.current) return;
         
-        const outputCanvas = document.createElement('canvas');
-        outputCanvas.width = videoRef.current.videoWidth;
-        outputCanvas.height = videoRef.current.videoHeight;
-        const ctx = outputCanvas.getContext('2d');
+        const canvas = canvasRef.current;
+        const video = videoRef.current;
+        
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        
+        const ctx = canvas.getContext('2d');
         if (!ctx) return;
 
-        // 1. Draw Video (Mirrored)
+        // Draw mirrored video frame
         ctx.save();
-        ctx.translate(outputCanvas.width, 0);
+        ctx.translate(canvas.width, 0);
         ctx.scale(-1, 1);
-        ctx.drawImage(videoRef.current, 0, 0);
+        ctx.drawImage(video, 0, 0);
         ctx.restore();
 
-        // 2. Draw AR Overlay
-        ctx.drawImage(canvasRef.current, 0, 0);
-
-        const resultData = outputCanvas.toDataURL('image/png').split(',')[1];
-        setTryOnResult(resultData);
+        // Store the captured photo
+        const photoData = canvas.toDataURL('image/jpeg', 0.95);
+        setCapturedPhoto(photoData);
         stopCamera();
     };
 
+    const retakePhoto = () => {
+        setCapturedPhoto(null);
+        startCamera();
+    };
 
-    // --- 6. Other Modes ---
+    const useCapturedPhoto = async () => {
+        if (!capturedPhoto || !generatedJewelryImage) return;
+        
+        setIsLoading(true);
+        try {
+            const base64 = capturedPhoto.split(',')[1];
+            const result = await generateTryOnImage(base64, 'image/jpeg', generatedJewelryImage, jewelryType);
+            setTryOnResult(result);
+            setCapturedPhoto(null);
+        } catch (e) {
+            setError("Processing failed. Please try again.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+
+    // --- 5. Mode Switching ---
+
+    const handleCameraMode = () => {
+        setMode('camera');
+        setTryOnResult(null);
+        setCapturedPhoto(null);
+        setError(null);
+    };
 
     const handleUploadMode = () => {
         setMode('upload');
         stopCamera();
         setTryOnResult(null);
-        setError(null); // Clear any camera-related errors
+        setCapturedPhoto(null);
+        setError(null);
     };
 
     const handleUploadFit = async () => {
@@ -400,33 +180,50 @@ export const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ generatedJewelryImag
     };
 
     return (
-        <div className="h-full flex flex-col bg-white rounded-2xl overflow-hidden shadow-sm border border-stone-100">
-             <div className="p-4 border-b border-stone-100 flex justify-between items-center bg-white z-10">
-                <h3 className="font-serif text-xl font-bold text-emerald-900">Virtual Studio</h3>
-                <div className="flex bg-stone-100 p-1 rounded-lg">
-                    <button onClick={() => { setMode('camera'); setTryOnResult(null); }} className={`px-3 py-1.5 text-xs font-bold uppercase rounded-md transition-all ${mode === 'camera' ? 'bg-white text-emerald-900 shadow-sm' : 'text-stone-400'}`}>Live AR</button>
-                    <button onClick={handleUploadMode} className={`px-3 py-1.5 text-xs font-bold uppercase rounded-md transition-all ${mode === 'upload' ? 'bg-white text-emerald-900 shadow-sm' : 'text-stone-400'}`}>Upload Photo</button>
+        <div className="h-full flex flex-col bg-white rounded-xl lg:rounded-2xl overflow-hidden shadow-sm border" style={{ borderColor: 'rgba(44, 44, 44, 0.08)' }}>
+             <div className="p-4 lg:p-5 border-b flex justify-between items-center bg-white z-10" style={{ borderColor: 'rgba(44, 44, 44, 0.06)' }}>
+                <h3 className="font-serif text-[18px] lg:text-[20px]" style={{ color: '#2C2C2C', fontWeight: 500, letterSpacing: '0.01em' }}>Virtual Studio</h3>
+                <div className="flex bg-gradient-to-br from-[#F5F1E8] to-[#E5E4E2] p-1 rounded-lg border" style={{ borderColor: 'rgba(184, 148, 31, 0.15)' }}>
+                    <button 
+                        onClick={handleUploadMode} 
+                        className={`px-3 lg:px-4 py-1.5 lg:py-2 text-[11px] lg:text-[12px] font-medium uppercase tracking-wide rounded-md transition-all ${mode === 'upload' ? 'bg-white shadow-sm' : ''}`}
+                        style={{ color: mode === 'upload' ? '#2C2C2C' : '#8B8680' }}
+                    >
+                        Upload
+                    </button>
+                    <button 
+                        onClick={handleCameraMode} 
+                        className={`px-3 lg:px-4 py-1.5 lg:py-2 text-[11px] lg:text-[12px] font-medium uppercase tracking-wide rounded-md transition-all ${mode === 'camera' ? 'bg-white shadow-sm' : ''}`}
+                        style={{ color: mode === 'camera' ? '#2C2C2C' : '#8B8680' }}
+                    >
+                        Camera
+                    </button>
                 </div>
             </div>
 
-            <div className="flex-1 relative bg-stone-50 overflow-hidden">
+            <div className="flex-1 relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #FDFBF7 0%, #F5F1E8 100%)' }}>
                 {isLoading && (
-                    <div className="absolute inset-0 z-50 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center text-emerald-900">
+                    <div className="absolute inset-0 z-50 backdrop-blur-md flex flex-col items-center justify-center" style={{ background: 'rgba(253, 251, 247, 0.95)' }}>
                         <Loader />
-                        <p className="mt-4 text-xs font-bold uppercase tracking-widest animate-pulse">Processing...</p>
+                        <p className="mt-4 text-[12px] font-medium uppercase tracking-[0.15em] animate-pulse" style={{ color: '#B8941F' }}>Processing...</p>
                     </div>
                 )}
 
-                {error && mode === 'camera' && (
-                     <div className="absolute inset-0 z-40 flex items-center justify-center bg-stone-50 p-8 text-center">
+                {error && (
+                     <div className="absolute inset-0 z-40 flex items-center justify-center p-8 text-center">
                         <div>
-                            <p className="text-red-500 font-bold mb-2">System Error</p>
-                            <p className="text-stone-500 text-sm mb-4">{error}</p>
+                            <div className="p-4 rounded-2xl mb-5 mx-auto w-fit" style={{ background: 'linear-gradient(135deg, #FEF2F2 0%, #FEE2E2 100%)' }}>
+                                <svg className="h-9 w-9 mx-auto" style={{ color: '#DC2626' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                            </div>
+                            <p className="font-serif text-[20px] mb-2" style={{ color: '#991B1B', fontWeight: 500 }}>Access Error</p>
+                            <p className="text-[14px] mb-5 max-w-sm mx-auto" style={{ color: '#DC2626' }}>{error}</p>
                             <button
-                                onClick={() => { setError(null); setMode('camera'); window.location.reload(); }}
-                                className="bg-stone-200 hover:bg-stone-300 text-stone-700 px-4 py-2 rounded-lg text-xs font-bold uppercase transition-colors"
+                                onClick={() => { setError(null); if (mode === 'camera') handleCameraMode(); }}
+                                className="bg-gradient-to-r from-[#B8941F] to-[#D4AF37] hover:from-[#9A7D19] hover:to-[#B8941F] text-white px-5 py-2.5 rounded-lg text-[13px] font-medium uppercase tracking-wide transition-all shadow-sm"
                             >
-                                Reload App
+                                Try Again
                             </button>
                         </div>
                      </div>
@@ -451,60 +248,84 @@ export const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ generatedJewelryImag
                         </div>
                     </div>
                 ) : mode === 'camera' ? (
-                    <div className="w-full h-full relative bg-black flex items-center justify-center overflow-hidden">
-                        {/* Start Screen - z-index 10 to sit above video */}
-                        {!isCameraActive && (
+                    <div className="w-full h-full relative flex items-center justify-center overflow-hidden" style={{ background: '#000' }}>
+                        {/* Captured Photo Preview */}
+                        {capturedPhoto && !tryOnResult && (
+                            <div className="absolute inset-0 z-30 flex flex-col items-center justify-center p-6" style={{ background: '#000' }}>
+                                <img src={capturedPhoto} alt="Captured" className="max-w-full max-h-[70%] object-contain rounded-xl shadow-2xl" />
+                                
+                                <div className="mt-6 flex gap-3">
+                                    <button
+                                        onClick={retakePhoto}
+                                        className="px-5 py-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white rounded-lg text-[13px] font-medium border transition-all"
+                                        style={{ borderColor: 'rgba(255, 255, 255, 0.2)' }}
+                                    >
+                                        Retake Photo
+                                    </button>
+                                    <button
+                                        onClick={useCapturedPhoto}
+                                        disabled={!generatedJewelryImage}
+                                        className="px-5 py-2.5 bg-gradient-to-r from-[#B8941F] to-[#D4AF37] hover:from-[#9A7D19] hover:to-[#B8941F] text-white rounded-lg text-[13px] font-medium shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        Use This Photo
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Start Screen */}
+                        {!isCameraActive && !capturedPhoto && (
                             <div className="text-center relative z-10 p-6">
-                                <div className="w-16 h-16 bg-stone-800 rounded-full flex items-center justify-center mx-auto mb-4 text-stone-500">
-                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.276A1 1 0 0121 8.818v6.364a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                <div className="w-20 h-20 bg-gradient-to-br from-[#F5F1E8] to-[#E5E4E2] rounded-2xl flex items-center justify-center mx-auto mb-5 border" style={{ borderColor: 'rgba(184, 148, 31, 0.2)' }}>
+                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" style={{ color: '#B8941F' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                                     </svg>
                                 </div>
                                 <button
                                     onClick={startCamera}
-                                    disabled={!isModelLoaded}
-                                    className="bg-emerald-900 disabled:bg-stone-600 text-white px-6 py-3 rounded-xl font-bold text-sm shadow-lg hover:bg-emerald-800 transition-all disabled:opacity-70 disabled:cursor-wait"
+                                    className="bg-gradient-to-r from-[#B8941F] to-[#D4AF37] hover:from-[#9A7D19] hover:to-[#B8941F] text-white px-6 py-3 rounded-lg font-medium text-[14px] shadow-lg transition-all tracking-wide"
                                 >
-                                    {isModelLoaded ? 'Activate Camera' : 'Loading AR Engine...'}
+                                    Start Camera
                                 </button>
-                                <p className="text-stone-500 text-xs mt-4 max-w-xs mx-auto">
-                                    {isModelLoaded ? 'Uses AI to map jewelry to your face in real-time.' : 'Initializing computer vision models...'}
+                                <p className="text-[13px] mt-4 max-w-xs mx-auto" style={{ color: '#8B8680' }}>
+                                    Capture a portrait photo to try on your jewelry design
                                 </p>
                             </div>
                         )}
 
-                        {/* Video Layer - z-index 0, pointer-events-none to prevent blocking clicks when opacity 0 */}
+                        {/* Video Layer */}
                         <video
                             ref={videoRef}
                             autoPlay
                             playsInline
                             muted
-                            className={`absolute inset-0 w-full h-full object-cover transform -scale-x-100 transition-opacity duration-500 z-0 ${isCameraActive ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+                            className={`absolute inset-0 w-full h-full object-cover transform -scale-x-100 transition-opacity duration-500 z-0 ${isCameraActive && !capturedPhoto ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
                         />
 
-                        {/* AR Canvas Layer */}
+                        {/* Canvas for capture */}
                         <canvas
                             ref={canvasRef}
-                            className="absolute inset-0 w-full h-full object-cover pointer-events-none z-10"
+                            className="hidden"
                         />
 
-                        {/* Camera UI Overlay */}
-                        {isCameraActive && (
+                        {/* Camera Controls */}
+                        {isCameraActive && !capturedPhoto && (
                             <>
-                                <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-black/30 backdrop-blur px-4 py-1.5 rounded-full border border-white/10 flex items-center gap-2 z-20">
-                                    <div className={`w-2 h-2 rounded-full ${physicsState.current.opacity > 0.5 ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.8)]' : 'bg-yellow-500'}`}></div>
-                                    <span className="text-[10px] font-bold text-white uppercase tracking-widest">
-                                        {physicsState.current.opacity > 0.5 ? 'Tracking Active' : 'Locating Face...'}
+                                <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-black/30 backdrop-blur-md px-4 py-2 rounded-full border flex items-center gap-2 z-20" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}>
+                                    <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
+                                    <span className="text-[11px] font-medium text-white uppercase tracking-wider">
+                                        Camera Active
                                     </span>
                                 </div>
 
                                 <div className="absolute bottom-8 left-0 right-0 flex justify-center z-20">
                                     <button
-                                        onClick={handleInstantSnapshot}
+                                        onClick={capturePhoto}
                                         className="group relative w-16 h-16 flex items-center justify-center"
-                                        aria-label="Take Snapshot"
+                                        aria-label="Capture Photo"
                                     >
-                                        <div className="absolute inset-0 bg-white/20 rounded-full animate-pulse group-hover:animate-none"></div>
+                                        <div className="absolute inset-0 bg-white/10 rounded-full animate-pulse group-hover:animate-none"></div>
                                         <div className="w-14 h-14 rounded-full border-4 border-white bg-transparent group-hover:bg-white/20 transition-all duration-200"></div>
                                         <div className="absolute w-10 h-10 bg-white rounded-full group-hover:scale-90 transition-transform duration-200"></div>
                                     </button>
