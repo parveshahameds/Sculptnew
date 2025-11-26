@@ -51,16 +51,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   useEffect(() => {
     // Check active session
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+    const initializeAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        setSession(session);
+        setUser(session?.user ?? null);
 
-      if (session?.user) {
-        await refreshCredits();
+        if (session?.user) {
+          // Refresh credits in background, don't block loading
+          refreshCredits().catch(err => {
+            console.error('Failed to load initial credits:', err);
+          });
+        }
+      } catch (error) {
+        console.error('Failed to initialize auth:', error);
+        setSession(null);
+        setUser(null);
+      } finally {
+        // Always set loading to false, even if there's an error
+        setLoading(false);
       }
+    };
 
-      setLoading(false);
-    });
+    initializeAuth();
 
     // Listen for auth changes
     const {
@@ -70,12 +83,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(session?.user ?? null);
 
       if (session?.user) {
-        await refreshCredits();
+        // Refresh credits in background
+        refreshCredits().catch(err => {
+          console.error('Failed to refresh credits on auth change:', err);
+        });
       } else {
         setCredits(null);
       }
-
-      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
@@ -111,10 +125,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
-        options: {
-          // Set session persistence based on "remember me"
-          persistSession: rememberMe,
-        },
       });
 
       if (error) {
@@ -123,6 +133,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       setSession(data.session);
       setUser(data.user);
+
+      // Refresh credits after successful login
+      if (data.user) {
+        refreshCredits().catch(err => {
+          console.error('Failed to load credits after login:', err);
+        });
+      }
+
+      // Note: The rememberMe parameter is kept for future implementation
+      // Session persistence in Supabase is controlled at the client level
+      // By default, Supabase uses localStorage which persists across browser sessions
+
       return { error: null };
     } catch (error) {
       return { error: error as Error };
