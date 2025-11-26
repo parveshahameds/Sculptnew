@@ -16,6 +16,7 @@ import type { JewelrySpec } from './components/ManufacturingDetails';
 import { useAuth } from './contexts/AuthContext';
 import LoginModal from './components/LoginModal';
 import { ScrollPanel } from './components/ScrollPanel';
+import { withCreditCheck, InsufficientCreditsError } from './services/creditGuard';
 
 interface RefinementHistory {
   prompt: string;
@@ -24,7 +25,7 @@ interface RefinementHistory {
 
 
 const App: React.FC = () => {
-  const { user, loading } = useAuth();
+  const { user, loading, refreshCredits } = useAuth();
   const [description, setDescription] = useState<string>('');
   const [jewelryType, setJewelryType] = useState<string>(JEWELRY_TYPES[0]);
   const [material, setMaterial] = useState<string>(MATERIALS[0]);
@@ -65,41 +66,51 @@ const App: React.FC = () => {
     setRefinementHistory([]);
 
     try {
-        const prompt = `Design a ${jewelryType} made of ${material} with ${gemstone} gemstones.
-        Style: High jewelry, photorealistic, 8k resolution, white background, soft studio lighting.
-        Description: ${description}.
-        ${engravingFile ? `Feature this engraving pattern/image subtly on the metal surface: ${engravingStyle}.` : ''}`;
+        // 2 credits: 1 for generation + 1 for analysis
+        await withCreditCheck(2, 'generate', async () => {
+            const prompt = `Design a ${jewelryType} made of ${material} with ${gemstone} gemstones.
+            Style: High jewelry, photorealistic, 8k resolution, white background, soft studio lighting.
+            Description: ${description}.
+            ${engravingFile ? `Feature this engraving pattern/image subtly on the metal surface: ${engravingStyle}.` : ''}`;
 
-        const imageInputs = [];
-        if (inspirationFile) {
-             const base64 = await fileToBase64(inspirationFile);
-             imageInputs.push({ base64, mimeType: inspirationFile.type });
-        }
-        if (engravingFile) {
-             const base64 = await fileToBase64(engravingFile);
-             imageInputs.push({ base64, mimeType: engravingFile.type });
-        }
+            const imageInputs = [];
+            if (inspirationFile) {
+                 const base64 = await fileToBase64(inspirationFile);
+                 imageInputs.push({ base64, mimeType: inspirationFile.type });
+            }
+            if (engravingFile) {
+                 const base64 = await fileToBase64(engravingFile);
+                 imageInputs.push({ base64, mimeType: engravingFile.type });
+            }
 
-        const imageBase64 = await generateJewelryImage(prompt, imageInputs, {
-            jewelryType,
-            material,
-            gemstone,
-            engravingStyle: engravingFile ? engravingStyle : undefined
+            const imageBase64 = await generateJewelryImage(prompt, imageInputs, {
+                jewelryType,
+                material,
+                gemstone,
+                engravingStyle: engravingFile ? engravingStyle : undefined
+            });
+            setGeneratedImage(imageBase64);
+            setOriginalImage(imageBase64);
+
+            const analysis = await analyzeJewelryImage(imageBase64, true);
+            setSpecs(analysis);
+
+            // Capture the design ID if saved
+            if ('designId' in analysis && analysis.designId) {
+                setCurrentDesignId(analysis.designId);
+            }
         });
-        setGeneratedImage(imageBase64);
-        setOriginalImage(imageBase64);
 
-        const analysis = await analyzeJewelryImage(imageBase64, true);
-        setSpecs(analysis);
-
-        // Capture the design ID if saved
-        if ('designId' in analysis && analysis.designId) {
-            setCurrentDesignId(analysis.designId);
-        }
+        await refreshCredits();
 
     } catch (e) {
-        if (e instanceof Error) setError(e.message);
-        else setError("An unexpected error occurred");
+        if (e instanceof InsufficientCreditsError) {
+            setError("Insufficient credits. You need 2 credits to generate a design.");
+        } else if (e instanceof Error) {
+            setError(e.message);
+        } else {
+            setError("An unexpected error occurred");
+        }
     } finally {
         setIsLoading(false);
     }
@@ -112,29 +123,39 @@ const App: React.FC = () => {
     setError(null);
 
     try {
-        const contextPrompt = `${jewelryType} made of ${material} with ${gemstone} gemstones. ${description}`;
+        // 2 credits: 1 for refinement + 1 for automatic analysis
+        await withCreditCheck(2, 'refine', async () => {
+            const contextPrompt = `${jewelryType} made of ${material} with ${gemstone} gemstones. ${description}`;
 
-        const result = await refineJewelryImage({
-            originalImageBase64: generatedImage,
-            refinementPrompt,
-            contextPrompt,
-            designId: currentDesignId || undefined
+            const result = await refineJewelryImage({
+                originalImageBase64: generatedImage,
+                refinementPrompt,
+                contextPrompt,
+                designId: currentDesignId || undefined
+            });
+
+            setGeneratedImage(result.refinedImageBase64);
+            setRefinementHistory(prev => [...prev, {
+                prompt: refinementPrompt,
+                timestamp: new Date()
+            }]);
+
+            // Use updated specs from refinement if available
+            if (result.updatedSpecs) {
+                setSpecs(result.updatedSpecs);
+            }
         });
 
-        setGeneratedImage(result.refinedImageBase64);
-        setRefinementHistory(prev => [...prev, {
-            prompt: refinementPrompt,
-            timestamp: new Date()
-        }]);
-
-        // Use updated specs from refinement if available
-        if (result.updatedSpecs) {
-            setSpecs(result.updatedSpecs);
-        }
+        await refreshCredits();
 
     } catch (e) {
-        if (e instanceof Error) setError(e.message);
-        else setError("Refinement failed. Please try again.");
+        if (e instanceof InsufficientCreditsError) {
+            setError("Insufficient credits. Refinement requires 2 credits.");
+        } else if (e instanceof Error) {
+            setError(e.message);
+        } else {
+            setError("Refinement failed. Please try again.");
+        }
     } finally {
         setIsRefining(false);
     }
@@ -178,13 +199,20 @@ const App: React.FC = () => {
               setGeneratedImage(base64String);
               setOriginalImage(base64String);
 
-              // 3. Analyze the existing image
+              // 3. Analyze the existing image (costs 1 credit)
               try {
-                  const analysis = await analyzeJewelryImage(base64String);
-                  setSpecs(analysis);
+                  await withCreditCheck(1, 'analyze', async () => {
+                      const analysis = await analyzeJewelryImage(base64String);
+                      setSpecs(analysis);
+                  });
+                  await refreshCredits();
               } catch (analysisErr) {
-                  console.error("Analysis failed", analysisErr);
-                  // Continue showing image even if analysis fails
+                  if (analysisErr instanceof InsufficientCreditsError) {
+                      setError("Insufficient credits to analyze this design.");
+                  } else {
+                      console.error("Analysis failed", analysisErr);
+                      // Continue showing image even if analysis fails
+                  }
               }
               setIsLoading(false);
           };

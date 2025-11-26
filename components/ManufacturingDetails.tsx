@@ -28,7 +28,7 @@ export const ManufacturingDetails: React.FC<ManufacturingDetailsProps> = ({ deta
     return (
       <div className="h-full flex flex-col items-center justify-center gap-3 py-12">
         <Loader />
-        <p className="text-emerald-700 text-xs font-bold uppercase tracking-widest mt-4">Analyzing Specs...</p>
+        <p className="text-amber-700 text-xs font-bold uppercase tracking-widest mt-4">Analyzing Specs...</p>
       </div>
     );
   }
@@ -49,12 +49,12 @@ export const ManufacturingDetails: React.FC<ManufacturingDetailsProps> = ({ deta
     <div>
       <div className="flex justify-between items-end mb-6 pb-4 border-b border-stone-100">
         <div>
-            <h3 className="text-lg font-bold text-emerald-900 uppercase tracking-wider">
+            <h3 className="text-lg font-bold text-amber-900 uppercase tracking-wider">
                 Specification Sheet
             </h3>
             <p className="text-xs text-stone-500 mt-1">Technical details for manufacturing</p>
         </div>
-        <div className="font-mono text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 px-3 py-1 rounded-full font-medium">
+        <div className="font-mono text-xs text-amber-700 bg-amber-50 border border-amber-100 px-3 py-1 rounded-full font-medium">
             ID: {details.designId}
         </div>
       </div>
@@ -91,7 +91,7 @@ export const ManufacturingDetails: React.FC<ManufacturingDetailsProps> = ({ deta
             <tbody className="divide-y divide-stone-100 bg-white">
               {details.gemstones.map((gem, index) => (
                 <tr key={index} className="hover:bg-stone-50 transition-colors">
-                  <td className="py-3 px-5 text-emerald-900 font-medium">{gem.type}</td>
+                  <td className="py-3 px-5 text-amber-900 font-medium">{gem.type}</td>
                   <td className="py-3 px-5 text-stone-600">{gem.cut}</td>
                   <td className="py-3 px-5 font-mono text-stone-500 text-xs">{gem.sizeMm}</td>
                   <td className="py-3 px-5 text-stone-800 font-medium text-right">{gem.quantity}</td>
@@ -103,8 +103,8 @@ export const ManufacturingDetails: React.FC<ManufacturingDetailsProps> = ({ deta
       </div>
 
       {/* Notes */}
-      <div className="bg-emerald-50/50 p-5 rounded-xl border border-emerald-100">
-        <h4 className="text-xs font-bold text-emerald-800 uppercase tracking-wider mb-3 flex items-center gap-2">
+      <div className="bg-amber-50/50 p-5 rounded-xl border border-amber-100">
+        <h4 className="text-xs font-bold text-amber-800 uppercase tracking-wider mb-3 flex items-center gap-2">
            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
            </svg>
@@ -112,8 +112,8 @@ export const ManufacturingDetails: React.FC<ManufacturingDetailsProps> = ({ deta
         </h4>
         <ul className="space-y-2">
           {details.manufacturingNotes.map((note, index) => (
-            <li key={index} className="text-emerald-900/80 text-sm leading-relaxed flex gap-2 items-start">
-                <span className="text-emerald-400 mt-1.5">•</span>
+            <li key={index} className="text-amber-900/80 text-sm leading-relaxed flex gap-2 items-start">
+                <span className="text-amber-400 mt-1.5">•</span>
                 <span>{note}</span>
             </li>
           ))}

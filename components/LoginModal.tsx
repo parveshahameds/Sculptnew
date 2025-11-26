@@ -25,14 +25,14 @@ const LoginModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-lg max-w-md w-full p-8 border border-stone-200">
+    <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ background: 'linear-gradient(135deg, #FDFBF7 0%, #F5F1E8 100%)' }}>
+      <div className="bg-white rounded-2xl shadow-lg max-w-md w-full p-8 border" style={{ borderColor: 'rgba(44, 44, 44, 0.08)' }}>
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-serif text-stone-800 mb-2" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
-            Sculpt Jewelry
+          <h1 className="text-3xl font-serif mb-2" style={{ color: '#2C2C2C', fontFamily: "'Cormorant Garamond', serif", fontWeight: 500, letterSpacing: '0.01em' }}>
+            PSM Jewelry
           </h1>
-          <p className="text-sm text-stone-600">Sign in to continue</p>
+          <p className="text-sm" style={{ color: '#8B8680' }}>Sign in to continue</p>
         </div>
 
         {/* Login Form */}
@@ -46,7 +46,7 @@ const LoginModal: React.FC = () => {
 
           {/* Email Input */}
           <div>
-            <label htmlFor="email" className="block text-xs font-bold uppercase tracking-wider text-stone-600 mb-2">
+            <label htmlFor="email" className="block text-xs font-bold uppercase tracking-wider mb-2" style={{ color: '#8B8680' }}>
               Email
             </label>
             <input
@@ -54,16 +54,29 @@ const LoginModal: React.FC = () => {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin-sculpt@sculpt.com"
+              placeholder="Enter Your Username"
               required
-              className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-lg text-stone-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-200"
+              className="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200"
+              style={{ 
+                backgroundColor: '#FDFBF7', 
+                border: '1px solid rgba(44, 44, 44, 0.08)',
+                color: '#2C2C2C'
+              }}
+              onFocus={(e) => {
+                e.target.style.borderColor = '#B8941F';
+                e.target.style.boxShadow = '0 0 0 2px rgba(184, 148, 31, 0.2)';
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = 'rgba(44, 44, 44, 0.08)';
+                e.target.style.boxShadow = 'none';
+              }}
               disabled={isLoading}
             />
           </div>
 
           {/* Password Input */}
           <div>
-            <label htmlFor="password" className="block text-xs font-bold uppercase tracking-wider text-stone-600 mb-2">
+            <label htmlFor="password" className="block text-xs font-bold uppercase tracking-wider mb-2" style={{ color: '#8B8680' }}>
               Password
             </label>
             <div className="relative">
@@ -74,13 +87,29 @@ const LoginModal: React.FC = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your password"
                 required
-                className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-lg text-stone-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-200 pr-12"
+                className="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 pr-12"
+                style={{ 
+                  backgroundColor: '#FDFBF7', 
+                  border: '1px solid rgba(44, 44, 44, 0.08)',
+                  color: '#2C2C2C'
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = '#B8941F';
+                  e.target.style.boxShadow = '0 0 0 2px rgba(184, 148, 31, 0.2)';
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = 'rgba(44, 44, 44, 0.08)';
+                  e.target.style.boxShadow = 'none';
+                }}
                 disabled={isLoading}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 transition-colors duration-200"
+                className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors duration-200"
+                style={{ color: '#8B8680' }}
+                onMouseEnter={(e) => e.currentTarget.style.color = '#2C2C2C'}
+                onMouseLeave={(e) => e.currentTarget.style.color = '#8B8680'}
                 disabled={isLoading}
               >
                 {showPassword ? (
@@ -104,10 +133,15 @@ const LoginModal: React.FC = () => {
               type="checkbox"
               checked={rememberMe}
               onChange={(e) => setRememberMe(e.target.checked)}
-              className="w-4 h-4 text-emerald-900 bg-stone-50 border-stone-300 rounded focus:ring-emerald-500 focus:ring-2"
+              className="w-4 h-4 rounded focus:ring-2"
+              style={{ 
+                accentColor: '#B8941F',
+                backgroundColor: '#FDFBF7',
+                borderColor: 'rgba(44, 44, 44, 0.2)'
+              }}
               disabled={isLoading}
             />
-            <label htmlFor="rememberMe" className="ml-2 text-sm text-stone-600">
+            <label htmlFor="rememberMe" className="ml-2 text-sm" style={{ color: '#8B8680' }}>
               Remember me
             </label>
           </div>
@@ -116,14 +150,26 @@ const LoginModal: React.FC = () => {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-emerald-900 text-white py-3 rounded-lg font-medium hover:bg-emerald-800 transition-all duration-200 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full text-white py-3 rounded-lg font-medium transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed"
+            style={{ 
+              background: 'linear-gradient(to right, #B8941F, #D4AF37)',
+              letterSpacing: '0.03em'
+            }}
+            onMouseEnter={(e) => {
+              if (!isLoading) {
+                e.currentTarget.style.background = 'linear-gradient(to right, #9A7D19, #B8941F)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'linear-gradient(to right, #B8941F, #D4AF37)';
+            }}
           >
             {isLoading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
 
         {/* Help Text */}
-        <div className="mt-6 text-center text-xs text-stone-500">
+        <div className="mt-6 text-center text-xs" style={{ color: '#8B8680' }}>
           Contact your administrator if you need access
         </div>
       </div>
