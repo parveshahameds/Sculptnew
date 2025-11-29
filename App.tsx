@@ -256,7 +256,12 @@ const App: React.FC = () => {
                 <div className="space-y-4 lg:space-y-5 pb-6">
                 <div className="bg-white p-4 lg:p-5 xl:p-6 rounded-xl lg:rounded-2xl shadow-sm border space-y-4 lg:space-y-5" style={{ borderColor: 'rgba(44, 44, 44, 0.08)' }}>
                     <h2 className="font-serif text-[18px] lg:text-[20px] border-b pb-3 lg:pb-4" style={{ color: '#2C2C2C', fontWeight: 500, letterSpacing: '0.01em', borderColor: 'rgba(44, 44, 44, 0.06)' }}>Configuration</h2>
-                    
+                    <div className="space-y-4">
+                        <OptionSelector label="Jewelry Type" value={jewelryType} onChange={setJewelryType} options={JEWELRY_TYPES} />
+                        <OptionSelector label="Material" value={material} onChange={setMaterial} options={MATERIALS} />
+                        <OptionSelector label="Gemstone" value={gemstone} onChange={setGemstone} options={GEMSTONES} />
+                    </div>
+
                     <VisionInput 
                         description={description} 
                         onDescriptionChange={setDescription}
@@ -264,11 +269,6 @@ const App: React.FC = () => {
                         onInspirationFileChange={setInspirationFile}
                     />
 
-                    <div className="space-y-4">
-                        <OptionSelector label="Jewelry Type" value={jewelryType} onChange={setJewelryType} options={JEWELRY_TYPES} />
-                        <OptionSelector label="Material" value={material} onChange={setMaterial} options={MATERIALS} />
-                        <OptionSelector label="Gemstone" value={gemstone} onChange={setGemstone} options={GEMSTONES} />
-                    </div>
                 </div>
 
                 <div className="bg-white p-4 lg:p-5 xl:p-6 rounded-xl lg:rounded-2xl shadow-sm border space-y-4 lg:space-y-5" style={{ borderColor: 'rgba(44, 44, 44, 0.08)' }}>
