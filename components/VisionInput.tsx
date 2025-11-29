@@ -91,7 +91,7 @@ export const VisionInput: React.FC<VisionInputProps> = ({
                 id="description"
                 rows={3}
                 className="w-full bg-transparent p-4 border-0 text-stone-800 placeholder-stone-400 focus:ring-0 resize-none font-normal text-base"
-                placeholder="Describe your masterpiece (e.g., 'A vintage art deco ring with sapphire center')..."
+                placeholder="Give more detailed prompt for better output (e.g., 'A traditional gold Jhumka with ruby stones and hanging pearls')..."
                 value={description}
                 onChange={(e) => onDescriptionChange(e.target.value)}
             />
