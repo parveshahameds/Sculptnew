@@ -275,6 +275,76 @@ Generate plausible specifications based on the visual information. Estimate dime
     }
 };
 
+export const refinePrompt = async (originalPrompt: string): Promise<string> => {
+    const systemPrompt = `You are an expert jewelry designer with decades of experience. Your task is to enhance and refine jewelry design prompts to be more precise, detailed, and professional.
+
+Transform the user's basic description into a comprehensive, expert-level prompt that includes:
+- Specific design elements and proportions
+- Detailed metal specifications and finishes
+- Precise gemstone details (cut, setting, arrangement)
+- Artistic style and aesthetic references
+- Technical manufacturing considerations
+- Surface treatments and textures
+
+Keep the refined prompt concise but highly detailed (2-4 sentences). Focus on visual and technical specifications that will produce stunning, photorealistic jewelry designs.
+
+Original prompt: "${originalPrompt}"
+
+Provide ONLY the refined prompt without any preamble or explanation.`;
+
+    try {
+        const requestBody = {
+            model: GEMINI_MODEL,
+            messages: [
+                {
+                    role: 'user',
+                    content: systemPrompt
+                }
+            ],
+            temperature: 0.7
+        };
+
+        console.log('Refining prompt with:', GEMINI_MODEL);
+
+        const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+                'Content-Type': 'application/json',
+                'HTTP-Referer': window.location.origin,
+                'X-Title': 'Jewelry Design App'
+            },
+            body: JSON.stringify(requestBody)
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            console.error('OpenRouter error:', errorData);
+            throw new Error(`Failed to refine prompt: ${errorData.error?.message || response.statusText}`);
+        }
+
+        const data = await response.json();
+        const refinedPrompt = data.choices?.[0]?.message?.content?.trim();
+
+        if (!refinedPrompt) {
+            throw new Error('No refined prompt received');
+        }
+
+        console.log('Original prompt:', originalPrompt);
+        console.log('Refined prompt:', refinedPrompt);
+
+        return refinedPrompt;
+
+    } catch (error) {
+        console.error('Prompt refinement failed:', error);
+        if (error instanceof Error) {
+            throw new Error(`Prompt refinement failed: ${error.message}`);
+        }
+        throw new Error('Prompt refinement failed. Please try again.');
+    }
+};
+
+
 export const generateTryOnImage = async (
     personImageBase64: string,
     personImageMimeType: string,

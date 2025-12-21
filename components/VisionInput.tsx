@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
+import { refinePrompt } from '../services/geminiService';
 
 interface VisionInputProps {
   description: string;
@@ -16,6 +17,7 @@ export const VisionInput: React.FC<VisionInputProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [isRefining, setIsRefining] = useState(false);
 
   useEffect(() => {
     if (inspirationFile) {
@@ -60,6 +62,23 @@ export const VisionInput: React.FC<VisionInputProps> = ({
     }
   };
 
+  const handleRefinePrompt = async () => {
+    if (!description.trim()) {
+      return;
+    }
+
+    setIsRefining(true);
+    try {
+      const refined = await refinePrompt(description);
+      onDescriptionChange(refined);
+    } catch (error) {
+      console.error('Failed to refine prompt:', error);
+      // Silently fail - user can try again or continue with original prompt
+    } finally {
+      setIsRefining(false);
+    }
+  };
+
   return (
     <div className="relative">
         <label htmlFor="description" className="block text-xs font-bold text-stone-500 uppercase tracking-wider mb-3">Vision</label>
@@ -94,12 +113,39 @@ export const VisionInput: React.FC<VisionInputProps> = ({
                 placeholder="Give more detailed prompt for better output (e.g., 'A traditional gold Jhumka with ruby stones and hanging pearls')..."
                 value={description}
                 onChange={(e) => onDescriptionChange(e.target.value)}
+                disabled={isRefining}
             />
             
             <div className="flex justify-between items-center px-4 py-2 border-t border-stone-200/60 bg-white/50 rounded-b-xl">
+            <div className="flex items-center gap-2">
                  <span className={`text-[10px] uppercase tracking-widest font-bold ${isDragging ? 'text-amber-600' : 'text-stone-400'}`}>
                     {isDragging ? 'Drop Image Here' : 'Drag Inspiration Image'}
                  </span>
+                 <button
+                        type="button"
+                        onClick={handleRefinePrompt}
+                        disabled={!description.trim() || isRefining}
+                        className="flex items-center gap-1.5 text-[11px] uppercase tracking-widest font-extrabold px-3 py-1.5 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-gradient-to-r from-amber-500/20 to-yellow-500/20 text-amber-800 hover:from-amber-500/30 hover:to-yellow-500/30 border-2 border-amber-400/50 shadow-sm hover:shadow-md"
+                        title="Refine prompt with AI"
+                    >
+                        {isRefining ? (
+                            <>
+                                <svg className="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <span>Refining...</span>
+                            </>
+                        ) : (
+                            <>
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                                </svg>
+                                <span>Refine</span>
+                            </>
+                        )}
+                    </button>
+                 </div>
                  <div className="flex items-center space-x-2">
                      <button
                         type="button"
