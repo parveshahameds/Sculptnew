@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 interface HeaderProps {
     onOpenGallery: () => void;
+    onOpenHistory: () => void;
 }
 
 const GemIcon: React.FC = () => (
@@ -14,7 +15,7 @@ const GemIcon: React.FC = () => (
     </svg>
 );
 
-export const Header: React.FC<HeaderProps> = ({ onOpenGallery }) => {
+export const Header: React.FC<HeaderProps> = ({ onOpenGallery, onOpenHistory }) => {
     const { user, logout, credits, creditsLoading } = useAuth();
 
     return (
@@ -87,6 +88,18 @@ export const Header: React.FC<HeaderProps> = ({ onOpenGallery }) => {
                         </span>
                     </div>
                 </div>
+
+                {/* History Access */}
+                <button
+                    onClick={onOpenHistory}
+                    className="group flex items-center gap-2 lg:gap-2.5 px-3 lg:px-4 xl:px-5 py-2 lg:py-2.5 bg-gradient-to-r from-[#B8941F] to-[#D4AF37] text-white rounded-full shadow-sm hover:shadow-md text-[12px] lg:text-[13px] font-medium tracking-wide"
+                    style={{ boxShadow: '0 2px 12px rgba(184, 148, 31, 0.25)' }}
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 lg:h-[18px] lg:w-[18px] group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span className="hidden sm:inline">History</span>
+                </button>
 
                 {/* Gallery Access */}
                 <button

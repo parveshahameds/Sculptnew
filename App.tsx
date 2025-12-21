@@ -12,6 +12,7 @@ import { FileUpload } from './components/FileUpload';
 import { ManufacturingDetails } from './components/ManufacturingDetails';
 import { VirtualTryOn } from './components/VirtualTryOn';
 import { GalleryModal, type GalleryItem } from './components/GalleryModal';
+import { HistoryModal, type HistoryDesign } from './components/HistoryModal';
 import type { JewelrySpec } from './components/ManufacturingDetails';
 import { useAuth } from './contexts/AuthContext';
 import LoginModal from './components/LoginModal';
@@ -42,6 +43,7 @@ const App: React.FC = () => {
   const [isRefining, setIsRefining] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [isGalleryOpen, setIsGalleryOpen] = useState<boolean>(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState<boolean>(false);
   const [refinementHistory, setRefinementHistory] = useState<RefinementHistory[]>([]);
 
   const fileToBase64 = (file: File): Promise<string> => {
@@ -225,6 +227,51 @@ const App: React.FC = () => {
       }
   };
 
+  const handleHistorySelect = async (design: HistoryDesign) => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      // Fetch the image from URL and convert to base64
+      const response = await fetch(design.image_url);
+      const blob = await response.blob();
+      const reader = new FileReader();
+      
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        const base64 = base64String.split(',')[1];
+        
+        // Set the image and specs
+        setGeneratedImage(base64);
+        setOriginalImage(base64);
+        
+        // Set the specs from the saved design
+        setSpecs(design.design_specs);
+        
+        // Set the design ID
+        setCurrentDesignId(design.id);
+        
+        // Populate form fields if available
+        if (design.jewelry_type) setJewelryType(design.jewelry_type);
+        if (design.material) setMaterial(design.material);
+        if (design.gemstone) setGemstone(design.gemstone);
+        if (design.prompt) setDescription(design.prompt);
+        
+        // Clear refinement history since this is a loaded design
+        setRefinementHistory([]);
+        
+        setIsHistoryOpen(false);
+        setIsLoading(false);
+      };
+      
+      reader.readAsDataURL(blob);
+    } catch (err) {
+      console.error('Error using history design:', err);
+      setError(err instanceof Error ? err.message : 'Failed to use history design');
+      setIsLoading(false);
+    }
+  };
+
   // Show loading state while checking authentication
   if (loading) {
     return (
@@ -246,7 +293,7 @@ const App: React.FC = () => {
     <div className="h-screen flex flex-col overflow-hidden font-sans" style={{ background: 'linear-gradient(to bottom, #FDFBF7 0%, #F5F1E8 100%)', color: '#2C2C2C' }}>
       <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 w-full flex flex-col h-full">
         <div className="flex-shrink-0">
-          <Header onOpenGallery={() => setIsGalleryOpen(true)} />
+          <Header onOpenGallery={() => setIsGalleryOpen(true)} onOpenHistory={() => setIsHistoryOpen(true)} />
         </div>
         
         <main className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-5 xl:gap-6 pt-4 lg:pt-5 min-h-0">
@@ -336,6 +383,7 @@ const App: React.FC = () => {
         </main>
         
         <GalleryModal isOpen={isGalleryOpen} onClose={() => setIsGalleryOpen(false)} onSelectDesign={handleGallerySelect} />
+        <HistoryModal isOpen={isHistoryOpen} onClose={() => setIsHistoryOpen(false)} onUseDesign={handleHistorySelect} />
       </div>
     </div>
   );
