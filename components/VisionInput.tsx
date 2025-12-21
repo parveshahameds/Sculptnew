@@ -100,16 +100,28 @@ export const VisionInput: React.FC<VisionInputProps> = ({
                  <span className={`text-[10px] uppercase tracking-widest font-bold ${isDragging ? 'text-amber-600' : 'text-stone-400'}`}>
                     {isDragging ? 'Drop Image Here' : 'Drag Inspiration Image'}
                  </span>
-                 <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="text-stone-400 hover:text-amber-600 transition-colors p-1"
-                    title="Upload Image"
-                 >
-                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                    </svg>
-                 </button>
+                 <div className="flex items-center space-x-2">
+                     <button
+                        type="button"
+                        onClick={() => console.log('Refine prompt clicked')} // Placeholder: implement refinement logic here
+                        className="text-stone-400 hover:text-amber-600 transition-colors p-1"
+                        title="Refine My Prompt"
+                     >
+                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                        </svg>
+                     </button>
+                     <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="text-stone-400 hover:text-amber-600 transition-colors p-1"
+                        title="Upload Image"
+                     >
+                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                        </svg>
+                     </button>
+                 </div>
             </div>
             
             <input
