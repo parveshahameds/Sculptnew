@@ -30,7 +30,7 @@ const LoginModal: React.FC = () => {
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-serif mb-2" style={{ color: '#2C2C2C', fontFamily: "'Cormorant Garamond', serif", fontWeight: 500, letterSpacing: '0.01em' }}>
-            PSM Jewelry
+            Sculpt
           </h1>
           <p className="text-sm" style={{ color: '#8B8680' }}>Sign in to continue</p>
         </div>
