@@ -120,6 +120,7 @@ Generate the refined jewelry image with ONLY the requested change applied. Every
                                 imageBase64: base64,
                                 designSpecs: updatedSpecs,
                                 refinementPrompt
+                                //test
                             });
                             console.log('Refined design saved successfully');
                         } catch (saveError) {
