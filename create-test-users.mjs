@@ -11,39 +11,47 @@ const __dirname = dirname(__filename);
 config({ path: resolve(__dirname, '.env') });
 
 const supabaseUrl = process.env.VITE_SUPABASE_PUBLIC_URL;
-const supabaseKey = process.env.VITE_SUPABASE_KEY;
+// Try to use service role key first, fall back to regular key
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
   console.error('❌ Missing Supabase environment variables. Please check your .env file.');
   process.exit(1);
 }
 
-const supabase = createClient(supabaseUrl, supabaseKey);
+// Create client with service role key for admin operations
+const supabase = createClient(supabaseUrl, supabaseKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false
+  }
+});
 
 async function createTestUsers() {
   console.log('Creating test users...');
 
   // User 1
   const user1 = {
-    email: 'user-test1@gmail.com',
-    password: 'user-test1@123',
+    email: 'user1@test.com',
+    password: 'test-user1@123',
   };
 
   // User 2
   const user2 = {
-    email: 'user-test2@gmail.com',
-    password: 'user-test2@123',
+    email: 'user2@test.com',
+    password: 'test-user2@123',
   };
 
   try {
     // Create User 1
     console.log('\n📧 Creating user 1:', user1.email);
-    const { data: userData1, error: error1 } = await supabase.auth.signUp({
+    const { data: userData1, error: error1 } = await supabase.auth.admin.createUser({
       email: user1.email,
       password: user1.password,
-      options: {
-        emailRedirectTo: undefined,
-      },
+      email_confirm: true,
+      user_metadata: {
+        name: 'Test User 1'
+      }
     });
 
     if (error1) {
@@ -56,12 +64,13 @@ async function createTestUsers() {
 
     // Create User 2
     console.log('\n📧 Creating user 2:', user2.email);
-    const { data: userData2, error: error2 } = await supabase.auth.signUp({
+    const { data: userData2, error: error2 } = await supabase.auth.admin.createUser({
       email: user2.email,
       password: user2.password,
-      options: {
-        emailRedirectTo: undefined,
-      },
+      email_confirm: true,
+      user_metadata: {
+        name: 'Test User 2'
+      }
     });
 
     if (error2) {
