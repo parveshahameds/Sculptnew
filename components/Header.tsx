@@ -30,7 +30,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenGallery, onOpenHistory }) 
                 </div>
                 <div className="flex flex-col">
                     <h1 className="text-[22px] lg:text-[26px] xl:text-[28px] font-serif tracking-[0.08em]" style={{ color: '#2C2C2C', fontWeight: 500 }}>
-                        PSM Jewels
+                        Sculpt
                     </h1>
                     <span className="hidden sm:block text-[9px] lg:text-[10px] uppercase tracking-[0.2em] -mt-1" style={{ color: '#8B8680', fontWeight: 500 }}>
                         Atelier de Haute Joaillerie

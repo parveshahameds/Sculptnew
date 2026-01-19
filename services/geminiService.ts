@@ -3,7 +3,7 @@ import { saveJewelryDesign, saveTryOnResult } from './supabaseService';
 
 const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
 const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
-const GEMINI_MODEL = 'google/gemini-2.5-flash-image-preview'; // Supports image generation and vision
+const GEMINI_MODEL = 'google/gemini-2.5-flash-image'; // Supports image generation and vision
 
 // Store for temporary data between generate and analyze calls
 let pendingDesignData: {
